@@ -87,11 +87,15 @@ def predict(req: PredictRequest):
                         # skip non-convertible values
                         pass
 
-        # If model reports expected feature count and we have fewer, pad with zeros
-        if model_n is not None and model_n > len(features):
-            # append zeros to match expected length
-            needed = model_n - len(features)
-            features.extend([0.0] * needed)
+        # If model reports expected feature count, align feature length
+        if model_n is not None:
+            if len(features) > model_n:
+                # truncate extra features
+                features = features[:model_n]
+            elif model_n > len(features):
+                # append zeros to match expected length
+                needed = model_n - len(features)
+                features.extend([0.0] * needed)
 
         # If model_n is None, we'll try to call predict and let exceptions surface
         prediction_code = model.predict([features])

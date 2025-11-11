@@ -11,11 +11,8 @@ const getBaseURL = () => {
   // @ts-ignore - __DEV__ is a global variable in React Native
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
     if (Platform.OS === 'android') {
-      // For physical device via USB, use your computer's IP address
-      // Your IP: 172.28.18.132 (found via ipconfig)
-      // For Android emulator, use: 'http://10.0.2.2:3000'
-      // For physical device, use your computer's IP:
-      return 'http://172.28.18.132:3000'; // Physical device (change to 10.0.2.2 for emulator)
+      // Physical device over LAN
+      return 'http://192.168.8.101:3000';
     }
     return 'http://localhost:3000'; // iOS simulator
   }
@@ -47,8 +44,13 @@ api.interceptors.request.use(
 
 // Auth API
 export const authAPI = {
-  register: async (email: string, password: string, name?: string) => {
-    const response = await api.post('/api/auth/register', { email, password, name });
+  register: async (
+    email: string,
+    password: string,
+    name?: string,
+    profile?: { age?: number; weight?: number; height?: number; goal?: string; skillLevel?: string }
+  ) => {
+    const response = await api.post('/api/auth/register', { email, password, name, ...(profile || {}) });
     if (response.data.token) {
       await AsyncStorage.setItem('authToken', response.data.token);
       await AsyncStorage.setItem('userId', response.data.user._id);

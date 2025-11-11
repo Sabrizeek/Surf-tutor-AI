@@ -32,7 +32,32 @@ app.post('/api/recommend', async (req, res) => {
 
     const modelUrl = process.env.MODEL_SERVER_URL || 'http://127.0.0.1:8000/predict';
 
-    const payload = { skillLevel, goal };
+    // Normalize inputs to match model training vocab
+    const norm = (s) => (typeof s === 'string' ? s.trim().toLowerCase() : '');
+    const skillMap = {
+        'beginner': 'Beginner',
+        'intermediate': 'Intermediate',
+        'advanced': 'Pro',
+        'pro': 'Pro'
+    };
+    const goalMap = {
+        'endurance': 'Endurance',
+        'power': 'Power',
+        'strength': 'Power',
+        'fat loss': 'Fat Loss',
+        'stamina': 'Stamina',
+        'flexibility': 'Endurance',
+        'balance': 'Stamina'
+    };
+
+    const normalizedSkill = skillMap[norm(skillLevel)] || 'Beginner';
+    const normalizedGoal = goalMap[norm(goal)] || 'Endurance';
+
+    console.log('[recommend] incoming', { skillLevel, goal, userId, userDetails });
+    console.log('[recommend] normalized', { skillLevel: normalizedSkill, goal: normalizedGoal });
+    console.log('[recommend] modelUrl', process.env.MODEL_SERVER_URL || 'http://127.0.0.1:8000/predict');
+
+    const payload = { skillLevel: normalizedSkill, goal: normalizedGoal };
     // Attach optional user details (bmi, age, weight, height, goals, etc.)
     if (userDetails && typeof userDetails === 'object') {
         payload.userDetails = userDetails;
@@ -48,7 +73,13 @@ app.post('/api/recommend', async (req, res) => {
         const json = await resp.json();
 
         if (!resp.ok) {
-            return res.status(resp.status).json(json);
+            const errorPayload = {
+                error: (json && (json.error || (json.detail && (json.detail.error || json.detail.message)) || json.message)) || 'Model server error',
+                details: (json && (json.details || (json.detail && json.detail.details) || json.detail)) || undefined,
+                status: resp.status
+            };
+            console.error('Model server returned error', errorPayload);
+            return res.status(resp.status).json(errorPayload);
         }
 
         // Optionally persist plan to Firestore if firebase is initialized and userId provided

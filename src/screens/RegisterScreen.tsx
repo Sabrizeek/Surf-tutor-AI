@@ -15,6 +15,11 @@ export default function RegisterScreen({ navigation }: any) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [age, setAge] = useState('');
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [goal, setGoal] = useState('');
+  const [skillLevel, setSkillLevel] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -25,7 +30,14 @@ export default function RegisterScreen({ navigation }: any) {
 
     setLoading(true);
     try {
-      await authAPI.register(email, password, name || undefined);
+      const profile: any = {};
+      if (age) profile.age = parseFloat(age);
+      if (weight) profile.weight = parseFloat(weight);
+      if (height) profile.height = parseFloat(height);
+      if (goal) profile.goal = goal;
+      if (skillLevel) profile.skillLevel = skillLevel;
+
+      await authAPI.register(email, password, name || undefined, profile);
       navigation.replace('MainTabs');
     } catch (error: any) {
       Alert.alert(
@@ -67,6 +79,56 @@ export default function RegisterScreen({ navigation }: any) {
           secureTextEntry
         />
 
+        <TextInput
+          style={styles.input}
+          placeholder="Age (years)"
+          value={age}
+          onChangeText={setAge}
+          keyboardType="numeric"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Weight (kg)"
+          value={weight}
+          onChangeText={setWeight}
+          keyboardType="numeric"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Height (cm)"
+          value={height}
+          onChangeText={setHeight}
+          keyboardType="numeric"
+        />
+
+        <Text style={styles.sectionLabel}>Skill Level</Text>
+        <View style={styles.rowBtns}>
+          {['Beginner', 'Intermediate', 'Pro'].map((lvl) => (
+            <TouchableOpacity
+              key={lvl}
+              style={[styles.pill, skillLevel === lvl && styles.pillActive]}
+              onPress={() => setSkillLevel(lvl)}
+            >
+              <Text style={[styles.pillText, skillLevel === lvl && styles.pillTextActive]}>{lvl}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Goal</Text>
+        <View style={styles.rowBtns}>
+          {['Endurance', 'Power', 'Fat Loss', 'Stamina'].map((g) => (
+            <TouchableOpacity
+              key={g}
+              style={[styles.pill, goal === g && styles.pillActive]}
+              onPress={() => setGoal(g)}
+            >
+              <Text style={[styles.pillText, goal === g && styles.pillTextActive]}>{g}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleRegister}
@@ -96,6 +158,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  sectionLabel: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  rowBtns: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  pill: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#eee',
+  },
+  pillActive: {
+    backgroundColor: '#007AFF',
+  },
+  pillText: {
+    color: '#333',
+  },
+  pillTextActive: {
+    color: '#fff',
   },
   content: {
     flex: 1,

@@ -4,8 +4,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score
 import joblib
+import numpy as np
 
-# --- 1. Load THE Large Dataset ---
+# --- 1. Load the dataset ---
 try:
     df = pd.read_csv('cardio_plans_1000.csv') # Using your 1000-row file
 except FileNotFoundError:
@@ -26,8 +27,20 @@ df['goal_encoded'] = goal_encoder.fit_transform(df['goal'])
 
 df['exercises_encoded'] = exercise_encoder.fit_transform(df['exercises'])
 
+# Ensure numeric auxiliary columns exist for training a 6-feature model
+# If not present, synthesize plausible values
+rng = np.random.default_rng(42)
+if 'height' not in df.columns:
+    df['height'] = rng.integers(150, 201, size=len(df))  # cm
+if 'weight' not in df.columns:
+    df['weight'] = rng.integers(50, 101, size=len(df))   # kg
+if 'age' not in df.columns:
+    df['age'] = rng.integers(16, 61, size=len(df))       # years
+if 'bmi' not in df.columns:
+    df['bmi'] = df['weight'] / ((df['height'] / 100.0) ** 2)
+
 # --- 3. Split Data into Training and Testing Sets ---
-X = df[['skill_encoded', 'goal_encoded']]
+X = df[['skill_encoded', 'goal_encoded', 'bmi', 'age', 'weight', 'height']]
 
 y = df['exercises_encoded']
 

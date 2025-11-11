@@ -3,8 +3,8 @@ const fetch = require('node-fetch');
 async function test() {
   const url = process.env.BACKEND_URL || 'http://localhost:3000/api/recommend';
   const payload = {
-    skillLevel: 'beginner',
-    goal: 'cardio',
+    skillLevel: 'Beginner',
+    goal: 'Endurance',
     userDetails: {
       bmi: 23.4,
       age: 29,
