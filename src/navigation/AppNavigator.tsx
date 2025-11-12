@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from '../screens/HomeScreen';
 import CardioPlansScreen from '../screens/CardioPlansScreen';
@@ -11,6 +12,7 @@ import PosePracticeScreen from '../screens/PosePracticeScreen';
 import ProgressScreen from '../screens/ProgressScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -32,6 +34,8 @@ function MainTabs() {
             iconName = 'camera-alt';
           } else if (route.name === 'Progress') {
             iconName = 'trending-up';
+          } else if (route.name === 'Profile') {
+            iconName = 'person';
           } else {
             iconName = 'help';
           }
@@ -48,17 +52,40 @@ function MainTabs() {
       <Tab.Screen name="AR" component={ARVisualizationScreen} />
       <Tab.Screen name="Practice" component={PosePracticeScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function AppNavigator() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      setIsAuthenticated(!!token);
+    } catch (error) {
+      setIsAuthenticated(false);
+    }
+  };
+
+  if (isAuthenticated === null) {
+    return null; // Or a loading screen
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator 
+        initialRouteName={isAuthenticated ? "MainTabs" : "Login"} 
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true, title: 'Login' }} />
+        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: true, title: 'Register' }} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }} />
-        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: true }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

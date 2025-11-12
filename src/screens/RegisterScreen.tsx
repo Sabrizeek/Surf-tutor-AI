@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authAPI } from '../services/api';
@@ -18,13 +19,44 @@ export default function RegisterScreen({ navigation }: any) {
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
-  const [goal, setGoal] = useState('');
+  const [goal, setGoal] = useState<string[]>([]);
   const [skillLevel, setSkillLevel] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
   const handleRegister = async () => {
+    // Validation
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+      Alert.alert('Error', 'Email and password are required');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    if (age && (isNaN(parseFloat(age)) || parseFloat(age) < 1 || parseFloat(age) > 120)) {
+      Alert.alert('Error', 'Please enter a valid age (1-120)');
+      return;
+    }
+
+    if (weight && (isNaN(parseFloat(weight)) || parseFloat(weight) < 1 || parseFloat(weight) > 500)) {
+      Alert.alert('Error', 'Please enter a valid weight (1-500 kg)');
+      return;
+    }
+
+    if (height && (isNaN(parseFloat(height)) || parseFloat(height) < 50 || parseFloat(height) > 300)) {
+      Alert.alert('Error', 'Please enter a valid height (50-300 cm)');
       return;
     }
 
@@ -34,16 +66,25 @@ export default function RegisterScreen({ navigation }: any) {
       if (age) profile.age = parseFloat(age);
       if (weight) profile.weight = parseFloat(weight);
       if (height) profile.height = parseFloat(height);
-      if (goal) profile.goal = goal;
+      if (goal && goal.length > 0) profile.goal = goal;
       if (skillLevel) profile.skillLevel = skillLevel;
 
       await authAPI.register(email, password, name || undefined, profile);
-      navigation.replace('MainTabs');
+      Alert.alert('Success', 'Account created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            });
+          },
+        },
+      ]);
     } catch (error: any) {
-      Alert.alert(
-        'Registration Failed',
-        error.response?.data?.error || 'Failed to create account'
-      );
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to create account. Please try again.';
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -51,105 +92,143 @@ export default function RegisterScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Surf Tutor AI</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join Surf Tutor AI</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Name (optional)"
-          value={name}
-          onChangeText={setName}
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Name (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your name"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password <Text style={styles.required}>*</Text></Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter password (min 6 characters)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Age (years)"
-          value={age}
-          onChangeText={setAge}
-          keyboardType="numeric"
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Age (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your age in years"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Weight (kg)"
-          value={weight}
-          onChangeText={setWeight}
-          keyboardType="numeric"
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Weight (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter weight in kg"
+              value={weight}
+              onChangeText={setWeight}
+              keyboardType="numeric"
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Height (cm)"
-          value={height}
-          onChangeText={setHeight}
-          keyboardType="numeric"
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Height (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter height in cm"
+              value={height}
+              onChangeText={setHeight}
+              keyboardType="numeric"
+            />
+          </View>
 
-        <Text style={styles.sectionLabel}>Skill Level</Text>
-        <View style={styles.rowBtns}>
-          {['Beginner', 'Intermediate', 'Pro'].map((lvl) => (
-            <TouchableOpacity
-              key={lvl}
-              style={[styles.pill, skillLevel === lvl && styles.pillActive]}
-              onPress={() => setSkillLevel(lvl)}
-            >
-              <Text style={[styles.pillText, skillLevel === lvl && styles.pillTextActive]}>{lvl}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Skill Level (Optional)</Text>
+            <View style={styles.rowBtns}>
+              {['Beginner', 'Intermediate', 'Advanced', 'Pro'].map((lvl) => (
+                <TouchableOpacity
+                  key={lvl}
+                  style={[styles.pill, skillLevel === lvl && styles.pillActive]}
+                  onPress={() => setSkillLevel(lvl)}
+                >
+                  <Text style={[styles.pillText, skillLevel === lvl && styles.pillTextActive]}>{lvl}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Goals (Optional - Select Multiple)</Text>
+            <View style={styles.rowBtns}>
+              {['Endurance', 'Power', 'Fat Loss', 'Stamina', 'Strength', 'Flexibility', 'Balance'].map((g) => {
+                const isSelected = goal.includes(g);
+                return (
+                  <TouchableOpacity
+                    key={g}
+                    style={[styles.pill, isSelected && styles.pillActive]}
+                    onPress={() => {
+                      if (isSelected) {
+                        setGoal(goal.filter(goalItem => goalItem !== g));
+                      } else {
+                        setGoal([...goal, g]);
+                      }
+                    }}
+                  >
+                    <Text style={[styles.pillText, isSelected && styles.pillTextActive]}>
+                      {g} {isSelected ? '✓' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Register</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Login')}
+            style={styles.linkButton}
+          >
+            <Text style={styles.linkText}>
+              Already have an account? Login
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.sectionLabel}>Goal</Text>
-        <View style={styles.rowBtns}>
-          {['Endurance', 'Power', 'Fat Loss', 'Stamina'].map((g) => (
-            <TouchableOpacity
-              key={g}
-              style={[styles.pill, goal === g && styles.pillActive]}
-              onPress={() => setGoal(g)}
-            >
-              <Text style={[styles.pillText, goal === g && styles.pillTextActive]}>{g}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Register</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.linkButton}
-        >
-          <Text style={styles.linkText}>
-            Already have an account? Login
-          </Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -159,37 +238,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  sectionLabel: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  rowBtns: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  pill: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#eee',
-  },
-  pillActive: {
-    backgroundColor: '#007AFF',
-  },
-  pillText: {
-    color: '#333',
-  },
-  pillTextActive: {
-    color: '#fff',
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
     padding: 20,
+    paddingTop: 40,
   },
   title: {
     fontSize: 32,
@@ -204,6 +258,18 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: 'center',
   },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  required: {
+    color: '#ff3b30',
+  },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -211,7 +277,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    marginBottom: 16,
+  },
+  rowBtns: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pill: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#eee',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  pillActive: {
+    backgroundColor: '#007AFF',
+  },
+  pillText: {
+    color: '#333',
+    fontSize: 14,
+  },
+  pillTextActive: {
+    color: '#fff',
   },
   button: {
     backgroundColor: '#007AFF',
@@ -219,6 +307,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
+    marginBottom: 16,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -229,8 +318,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   linkButton: {
-    marginTop: 20,
+    marginTop: 10,
     alignItems: 'center',
+    paddingBottom: 20,
   },
   linkText: {
     color: '#007AFF',

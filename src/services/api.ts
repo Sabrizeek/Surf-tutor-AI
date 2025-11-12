@@ -11,8 +11,8 @@ const getBaseURL = () => {
   // @ts-ignore - __DEV__ is a global variable in React Native
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
     if (Platform.OS === 'android') {
-      // Physical device over LAN
-      return 'http://192.168.8.101:3000';
+      // Use localhost with adb reverse (adb reverse tcp:3000 tcp:3000)
+      return 'http://localhost:3000';
     }
     return 'http://localhost:3000'; // iOS simulator
   }
@@ -48,9 +48,20 @@ export const authAPI = {
     email: string,
     password: string,
     name?: string,
-    profile?: { age?: number; weight?: number; height?: number; goal?: string; skillLevel?: string }
+    profile?: { age?: number; weight?: number; height?: number; goal?: string | string[]; skillLevel?: string }
   ) => {
-    const response = await api.post('/api/auth/register', { email, password, name, ...(profile || {}) });
+    // Send all fields at top level as backend expects
+    const requestBody: any = { email, password };
+    if (name) requestBody.name = name;
+    if (profile) {
+      if (profile.age !== undefined) requestBody.age = profile.age;
+      if (profile.weight !== undefined) requestBody.weight = profile.weight;
+      if (profile.height !== undefined) requestBody.height = profile.height;
+      if (profile.goal) requestBody.goal = profile.goal;
+      if (profile.skillLevel) requestBody.skillLevel = profile.skillLevel;
+    }
+    
+    const response = await api.post('/api/auth/register', requestBody);
     if (response.data.token) {
       await AsyncStorage.setItem('authToken', response.data.token);
       await AsyncStorage.setItem('userId', response.data.user._id);
@@ -73,11 +84,18 @@ export const authAPI = {
   },
 
   getProfile: async () => {
+    // Verify token exists before making request
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.');
+    }
+    console.log('[API] Fetching profile with token:', token.substring(0, 20) + '...');
     const response = await api.get('/api/auth/profile');
+    console.log('[API] Profile response:', response.data);
     return response.data;
   },
 
-  updateProfile: async (updates: { name?: string; height?: number; weight?: number; age?: number; bio?: string }) => {
+  updateProfile: async (updates: { name?: string; height?: number; weight?: number; age?: number; bio?: string; goal?: string | string[]; skillLevel?: string }) => {
     const response = await api.put('/api/auth/profile', updates);
     return response.data;
   },
@@ -85,16 +103,18 @@ export const authAPI = {
 
 // Cardio Plans API
 export const cardioAPI = {
-  getRecommendations: async (skillLevel: string, goal: string, userDetails?: {
+  getRecommendations: async (skillLevel: string, goal: string | string[], userDetails?: {
     height?: number;
     weight?: number;
     age?: number;
     bmi?: number;
   }) => {
     const userId = await AsyncStorage.getItem('userId');
+    // Ensure goal is sent as array
+    const goalArray = Array.isArray(goal) ? goal : [goal];
     const response = await api.post('/api/recommend', {
       skillLevel,
-      goal,
+      goal: goalArray,
       userId,
       userDetails,
     });

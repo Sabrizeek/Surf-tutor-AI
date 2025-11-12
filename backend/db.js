@@ -18,7 +18,11 @@ async function connectDB() {
 }
 
 function getDb() {
-  if (!dbInstance) throw new Error('Call connectDB first');
+  if (!dbInstance) {
+    const error = new Error('Database not connected. Call connectDB first or check MONGODB_URI environment variable.');
+    console.error('[getDb]', error.message);
+    throw error;
+  }
   return dbInstance;
 }
 

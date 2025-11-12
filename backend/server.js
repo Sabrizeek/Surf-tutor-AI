@@ -23,10 +23,10 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Create the /api/recommend endpoint - forwards to model server
 app.post('/api/recommend', async (req, res) => {
-    // Accept richer user input, e.g. skillLevel, goal, and an optional userDetails object
+    // Accept richer user input, e.g. skillLevel, goal (can be array), and an optional userDetails object
     const { skillLevel, goal, userId, userDetails } = req.body || {};
 
-    if (!skillLevel || !goal) {
+    if (!skillLevel || !goal || (Array.isArray(goal) && goal.length === 0)) {
         return res.status(400).json({ error: 'Missing required fields: skillLevel and goal' });
     }
 
@@ -51,36 +51,56 @@ app.post('/api/recommend', async (req, res) => {
     };
 
     const normalizedSkill = skillMap[norm(skillLevel)] || 'Beginner';
-    const normalizedGoal = goalMap[norm(goal)] || 'Endurance';
+    // Handle goal as array or string
+    const goalArray = Array.isArray(goal) ? goal : [goal];
+    const normalizedGoals = goalArray.map(g => goalMap[norm(g)] || g).filter(Boolean);
 
     console.log('[recommend] incoming', { skillLevel, goal, userId, userDetails });
-    console.log('[recommend] normalized', { skillLevel: normalizedSkill, goal: normalizedGoal });
+    console.log('[recommend] normalized', { skillLevel: normalizedSkill, goals: normalizedGoals });
     console.log('[recommend] modelUrl', process.env.MODEL_SERVER_URL || 'http://127.0.0.1:8000/predict');
 
-    const payload = { skillLevel: normalizedSkill, goal: normalizedGoal };
+    const payload = { skillLevel: normalizedSkill, goal: normalizedGoals };
     // Attach optional user details (bmi, age, weight, height, goals, etc.)
     if (userDetails && typeof userDetails === 'object') {
         payload.userDetails = userDetails;
     }
 
     try {
+        console.log('[recommend] Calling model server at:', modelUrl);
+        console.log('[recommend] Payload:', JSON.stringify(payload, null, 2));
+        
+        // Use AbortController for timeout with node-fetch
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         const resp = await fetch(modelUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
-
-        const json = await resp.json();
+        
+        clearTimeout(timeoutId);
 
         if (!resp.ok) {
+            let json;
+            try {
+                json = await resp.json();
+            } catch (parseError) {
+                json = { error: 'Failed to parse model server response', status: resp.status };
+            }
+            
             const errorPayload = {
                 error: (json && (json.error || (json.detail && (json.detail.error || json.detail.message)) || json.message)) || 'Model server error',
-                details: (json && (json.details || (json.detail && json.detail.details) || json.detail)) || undefined,
+                details: (json && (json.details || (json.detail && json.detail.details) || json.detail)) || `HTTP ${resp.status}`,
                 status: resp.status
             };
-            console.error('Model server returned error', errorPayload);
-            return res.status(resp.status).json(errorPayload);
+            console.error('[recommend] Model server returned error:', errorPayload);
+            return res.status(resp.status >= 400 && resp.status < 600 ? resp.status : 500).json(errorPayload);
         }
+
+        const json = await resp.json();
+        console.log('[recommend] Model server response received successfully');
 
         // Optionally persist plan to Firestore if firebase is initialized and userId provided
         if (firebaseAdmin.isInitialized() && userId) {
@@ -96,14 +116,38 @@ app.post('/api/recommend', async (req, res) => {
                     modelVersion: json.meta ? json.meta.modelVersion : null
                 });
             } catch (e) {
-                console.error('Failed to save plan to Firestore', e.message || e);
+                console.error('[recommend] Failed to save plan to Firestore', e.message || e);
             }
         }
 
         return res.json(json);
     } catch (e) {
-        console.error('Error calling model server', e.message || e);
-        return res.status(500).json({ error: 'Failed to call model server', details: e.message });
+        console.error('[recommend] Error calling model server:', e);
+        console.error('[recommend] Error message:', e.message);
+        console.error('[recommend] Error code:', e.code);
+        console.error('[recommend] Error stack:', e.stack);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to call model server';
+        let errorDetails = e.message || 'Unknown error';
+        
+        if (e.code === 'ECONNREFUSED' || e.message.includes('ECONNREFUSED')) {
+            errorMessage = 'Model server is not running';
+            errorDetails = `Cannot connect to ${modelUrl}. Please ensure the Python model server is running on port 8000.`;
+        } else if (e.code === 'ETIMEDOUT' || e.message.includes('timeout')) {
+            errorMessage = 'Model server request timed out';
+            errorDetails = 'The model server took too long to respond. Please try again.';
+        } else if (e.message.includes('fetch')) {
+            errorMessage = 'Network error connecting to model server';
+            errorDetails = e.message;
+        }
+        
+        return res.status(500).json({ 
+            error: errorMessage, 
+            details: errorDetails,
+            modelUrl: modelUrl,
+            code: e.code
+        });
     }
 });
 

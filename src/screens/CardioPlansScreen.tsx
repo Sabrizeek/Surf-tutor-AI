@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,46 +10,67 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { cardioAPI } from '../services/api';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { cardioAPI, authAPI } from '../services/api';
+
+interface WorkoutPlan {
+  planName?: string;
+  skillLevel?: string;
+  goal?: string;
+  equipment?: string;
+  durationMinutes?: number;
+  focus?: string;
+  exercises?: string | string[];
+}
 
 export default function CardioPlansScreen() {
   const [skillLevel, setSkillLevel] = useState('');
-  const [goal, setGoal] = useState('');
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
-  const [age, setAge] = useState('');
+  const [goal, setGoal] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [recommendations, setRecommendations] = useState<WorkoutPlan[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
-  const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];
-  const goals = ['Endurance', 'Strength', 'Flexibility', 'Balance', 'Power'];
+  const skillLevels = ['Beginner', 'Intermediate', 'Advanced', 'Pro'];
+  const goals = ['Endurance', 'Strength', 'Flexibility', 'Balance', 'Power', 'Stamina', 'Fat Loss'];
 
-  const calculateBMI = () => {
-    if (height && weight) {
-      const heightInMeters = parseFloat(height) / 100;
-      const weightInKg = parseFloat(weight);
-      if (heightInMeters > 0 && weightInKg > 0) {
-        return weightInKg / (heightInMeters * heightInMeters);
-      }
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      setLoadingProfile(true);
+      const response = await authAPI.getProfile();
+      const user = response.user;
+      setUserProfile(user);
+      if (user.skillLevel) setSkillLevel(user.skillLevel);
+      // Handle goal as array or string (backward compatibility)
+      const userGoals = Array.isArray(user.goal) ? user.goal : (user.goal ? [user.goal] : []);
+      setGoal(userGoals);
+    } catch (error: any) {
+      console.error('Error loading profile:', error);
+      Alert.alert('Error', 'Failed to load profile. Please try again.');
+    } finally {
+      setLoadingProfile(false);
     }
-    return null;
   };
 
   const handleGetRecommendations = async () => {
-    if (!skillLevel || !goal) {
-      Alert.alert('Error', 'Please select skill level and goal');
+    if (!skillLevel || !goal || goal.length === 0) {
+      Alert.alert('Error', 'Please select skill level and at least one goal');
       return;
     }
 
     setLoading(true);
     try {
       const userDetails: any = {};
-      if (height) userDetails.height = parseFloat(height);
-      if (weight) userDetails.weight = parseFloat(weight);
-      if (age) userDetails.age = parseFloat(age);
-      
-      const bmi = calculateBMI();
-      if (bmi) userDetails.bmi = bmi;
+      if (userProfile) {
+        if (userProfile.height) userDetails.height = userProfile.height;
+        if (userProfile.weight) userDetails.weight = userProfile.weight;
+        if (userProfile.age) userDetails.age = userProfile.age;
+        if (userProfile.bmi) userDetails.bmi = userProfile.bmi;
+      }
 
       const response = await cardioAPI.getRecommendations(
         skillLevel,
@@ -57,24 +78,55 @@ export default function CardioPlansScreen() {
         Object.keys(userDetails).length > 0 ? userDetails : undefined
       );
 
-      if (response.recommendedExercises) {
-        setRecommendations(
-          Array.isArray(response.recommendedExercises)
-            ? response.recommendedExercises
-            : [response.recommendedExercises]
-        );
+      if (response.recommendedPlans && Array.isArray(response.recommendedPlans)) {
+        setRecommendations(response.recommendedPlans);
+      } else if (response.recommendedExercises) {
+        // Fallback: if we get old format, convert to new format
+        const exercises = Array.isArray(response.recommendedExercises)
+          ? response.recommendedExercises
+          : [response.recommendedExercises];
+        const plans: WorkoutPlan[] = exercises.map((ex, idx) => ({
+          planName: `Workout Plan ${idx + 1}`,
+          skillLevel,
+          goal,
+          exercises: typeof ex === 'string' ? ex.split(';') : ex,
+          durationMinutes: 30,
+          focus: goal,
+        }));
+        setRecommendations(plans);
       } else {
         Alert.alert('Error', 'No recommendations received');
       }
     } catch (error: any) {
       console.error('Error getting recommendations:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.error || 'Failed to get recommendations. Make sure the backend is running.'
-      );
+      console.error('Error response:', error.response?.data);
+      const errorData = error.response?.data || {};
+      const errorMsg = errorData.error || 'Failed to get recommendations';
+      const errorDetails = errorData.details || '';
+      
+      let displayMessage = errorMsg;
+      if (errorDetails) {
+        displayMessage += `\n\n${errorDetails}`;
+      }
+      
+      // Special handling for model server errors
+      if (errorMsg.includes('Model server') || errorMsg.includes('model server')) {
+        displayMessage = 'AI Model Server Error\n\n' + (errorDetails || 'The AI model server is not running. Please ensure the Python model server is started on port 8000.');
+      }
+      
+      Alert.alert('Error', displayMessage);
     } finally {
       setLoading(false);
     }
+  };
+
+  const parseExercises = (exercises: string | string[] | undefined): string[] => {
+    if (!exercises) return [];
+    if (Array.isArray(exercises)) return exercises;
+    if (typeof exercises === 'string') {
+      return exercises.split(';').map(e => e.trim()).filter(e => e.length > 0);
+    }
+    return [];
   };
 
   return (
@@ -111,59 +163,49 @@ export default function CardioPlansScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Goal *</Text>
+          <Text style={styles.label}>Goals * (Select Multiple)</Text>
           <View style={styles.buttonGroup}>
-            {goals.map((g) => (
-              <TouchableOpacity
-                key={g}
-                style={[styles.button, goal === g && styles.buttonActive]}
-                onPress={() => setGoal(g)}
-              >
-                <Text
-                  style={[
-                    styles.buttonText,
-                    goal === g && styles.buttonTextActive,
-                  ]}
+            {goals.map((g) => {
+              const isSelected = goal.includes(g);
+              return (
+                <TouchableOpacity
+                  key={g}
+                  style={[styles.button, isSelected && styles.buttonActive]}
+                  onPress={() => {
+                    if (isSelected) {
+                      setGoal(goal.filter(goalItem => goalItem !== g));
+                    } else {
+                      setGoal([...goal, g]);
+                    }
+                  }}
                 >
-                  {g}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.buttonText,
+                      isSelected && styles.buttonTextActive,
+                    ]}
+                  >
+                    {g} {isSelected ? '✓' : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Height (cm)</Text>
-          <TextInput
-            style={styles.input}
-            value={height}
-            onChangeText={setHeight}
-            placeholder="e.g., 175"
-            keyboardType="numeric"
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Weight (kg)</Text>
-          <TextInput
-            style={styles.input}
-            value={weight}
-            onChangeText={setWeight}
-            placeholder="e.g., 70"
-            keyboardType="numeric"
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Age</Text>
-          <TextInput
-            style={styles.input}
-            value={age}
-            onChangeText={setAge}
-            placeholder="e.g., 25"
-            keyboardType="numeric"
-          />
-        </View>
+        {userProfile && (
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileInfoText}>
+              Using profile: {userProfile.name || userProfile.email}
+              {userProfile.height && ` • ${userProfile.height}cm`}
+              {userProfile.weight && ` • ${userProfile.weight}kg`}
+              {userProfile.age && ` • ${userProfile.age}yrs`}
+            </Text>
+            <Text style={styles.profileInfoSubtext}>
+              Update your profile to get better recommendations
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
@@ -179,12 +221,48 @@ export default function CardioPlansScreen() {
 
         {recommendations.length > 0 && (
           <View style={styles.recommendationsContainer}>
-            <Text style={styles.recommendationsTitle}>Recommended Exercises:</Text>
-            {recommendations.map((exercise, index) => (
-              <View key={index} style={styles.recommendationItem}>
-                <Text style={styles.recommendationText}>• {exercise}</Text>
-              </View>
-            ))}
+            <Text style={styles.recommendationsTitle}>Recommended Workout Plans:</Text>
+            {recommendations.map((plan, index) => {
+              const exercises = parseExercises(plan.exercises);
+              return (
+                <View key={index} style={styles.planCard}>
+                  <Text style={styles.planName}>{plan.planName || `Workout Plan ${index + 1}`}</Text>
+                  
+                  <View style={styles.planDetails}>
+                    {plan.durationMinutes && (
+                      <View style={styles.planDetailRow}>
+                        <Icon name="schedule" size={16} color="#666" />
+                        <Text style={styles.planDetailText}>{plan.durationMinutes} minutes</Text>
+                      </View>
+                    )}
+                    {plan.focus && (
+                      <View style={styles.planDetailRow}>
+                        <Icon name="fitness-center" size={16} color="#666" />
+                        <Text style={styles.planDetailText}>Focus: {plan.focus}</Text>
+                      </View>
+                    )}
+                    {plan.equipment && (
+                      <View style={styles.planDetailRow}>
+                        <Icon name="build" size={16} color="#666" />
+                        <Text style={styles.planDetailText}>Equipment: {plan.equipment}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {exercises.length > 0 && (
+                    <View style={styles.exercisesSection}>
+                      <Text style={styles.exercisesTitle}>Exercises ({exercises.length}):</Text>
+                      {exercises.map((exercise, exIndex) => (
+                        <View key={exIndex} style={styles.exerciseItem}>
+                          <Text style={styles.exerciseNumber}>{exIndex + 1}.</Text>
+                          <Text style={styles.exerciseText}>{exercise}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -283,13 +361,83 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
   },
-  recommendationItem: {
+  profileInfo: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  profileInfoText: {
+    fontSize: 14,
+    color: '#1976d2',
+    fontWeight: '600',
+  },
+  profileInfoSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  planCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  planName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  planDetails: {
+    marginBottom: 12,
+  },
+  planDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  planDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  exercisesSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  exercisesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 8,
   },
-  recommendationText: {
-    fontSize: 16,
+  exerciseItem: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  exerciseNumber: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginRight: 8,
+    minWidth: 24,
+  },
+  exerciseText: {
+    fontSize: 14,
     color: '#666',
-    lineHeight: 24,
+    flex: 1,
+    lineHeight: 20,
   },
 });
 
