@@ -9,37 +9,39 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const techniques = [
   {
     id: 'catch-wave',
     name: 'Catching a Wave',
     description: 'Learn the timing and positioning for catching waves',
-    icon: '🌊',
+    icon: 'waves',
   },
   {
     id: 'pop-up',
     name: 'Pop-Up',
     description: 'Master the pop-up technique to get on your board',
-    icon: '🏄',
+    icon: 'sports-surfing',
   },
   {
     id: 'turning',
     name: 'Turning',
     description: 'Learn how to turn and maneuver on the wave',
-    icon: '🔄',
+    icon: 'rotate-right',
   },
   {
     id: 'bottom-turn',
     name: 'Bottom Turn',
     description: 'Essential technique for setting up your ride',
-    icon: '↪️',
+    icon: 'arrow-downward',
   },
   {
     id: 'cutback',
     name: 'Cutback',
     description: 'Advanced maneuver to stay in the wave',
-    icon: '⚡',
+    icon: 'swap-horiz',
   },
 ];
 
@@ -66,7 +68,7 @@ export default function ARVisualizationScreen() {
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            📝 Note: FBX animation models are still being created. AR visualization will be available soon.
+            Note: FBX animation models are still being created. AR visualization will be available soon.
           </Text>
         </View>
 
@@ -79,7 +81,7 @@ export default function ARVisualizationScreen() {
             ]}
             onPress={() => handleViewTechnique(technique.id)}
           >
-            <Text style={styles.techniqueIcon}>{technique.icon}</Text>
+            <Icon name={technique.icon} size={40} color="#007AFF" style={{ marginRight: 16 }} />
             <View style={styles.techniqueContent}>
               <Text style={styles.techniqueName}>{technique.name}</Text>
               <Text style={styles.techniqueDescription}>
@@ -163,10 +165,6 @@ const styles = StyleSheet.create({
   techniqueCardSelected: {
     borderWidth: 2,
     borderColor: '#007AFF',
-  },
-  techniqueIcon: {
-    fontSize: 40,
-    marginRight: 16,
   },
   techniqueContent: {
     flex: 1,

@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { progressAPI, gamificationAPI } from '../services/api';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 export default function ProgressScreen() {
   const [progress, setProgress] = useState<any>(null);
@@ -122,7 +124,7 @@ export default function ProgressScreen() {
             <View style={styles.badgesContainer}>
               {badges.map((badge: string, index: number) => (
                 <View key={index} style={styles.badge}>
-                  <Text style={styles.badgeIcon}>🏆</Text>
+                  <Icon name="emoji-events" size={32} color="#FFD700" />
                   <Text style={styles.badgeText}>{badge}</Text>
                 </View>
               ))}

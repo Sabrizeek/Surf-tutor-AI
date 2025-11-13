@@ -8,6 +8,8 @@ const { connectDB } = require('./db');
 const authRouter = require('./routes/auth');
 const progressRouter = require('./routes/progress');
 const gamificationRouter = require('./routes/gamification');
+const poseRouter = require('./routes/pose');
+const poseAnalysisRouter = require('./routes/poseAnalysis');
 const app = express();
 
 app.use(cors());
@@ -17,6 +19,8 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/progress', progressRouter);
 app.use('/api/gamification', gamificationRouter);
+app.use('/api/pose', poseRouter);
+app.use('/api/pose-analysis', poseAnalysisRouter);
 
 // Health endpoint
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

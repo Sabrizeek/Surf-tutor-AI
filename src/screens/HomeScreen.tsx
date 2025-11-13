@@ -8,6 +8,8 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 export default function HomeScreen({ navigation }: any) {
   return (
@@ -23,7 +25,7 @@ export default function HomeScreen({ navigation }: any) {
             style={styles.cardButton}
             onPress={() => navigation.navigate('Cardio')}
           >
-            <Text style={styles.cardIcon}>💪</Text>
+            <Icon name="fitness-center" size={48} color="#007AFF" />
             <Text style={styles.cardTitle}>Cardio Plans</Text>
             <Text style={styles.cardDescription}>
               Get personalized AI-generated cardio workout recommendations
@@ -36,7 +38,7 @@ export default function HomeScreen({ navigation }: any) {
             style={styles.cardButton}
             onPress={() => navigation.navigate('AR')}
           >
-            <Text style={styles.cardIcon}>🌊</Text>
+            <Icon name="3d-rotation" size={48} color="#007AFF" />
             <Text style={styles.cardTitle}>AR Visualization</Text>
             <Text style={styles.cardDescription}>
               Watch AR guides for surfing techniques in your environment
@@ -49,7 +51,7 @@ export default function HomeScreen({ navigation }: any) {
             style={styles.cardButton}
             onPress={() => navigation.navigate('Practice')}
           >
-            <Text style={styles.cardIcon}>📹</Text>
+            <Icon name="camera-alt" size={48} color="#007AFF" />
             <Text style={styles.cardTitle}>Pose Practice</Text>
             <Text style={styles.cardDescription}>
               Practice land drills with real-time coaching feedback
@@ -62,7 +64,7 @@ export default function HomeScreen({ navigation }: any) {
             style={styles.cardButton}
             onPress={() => navigation.navigate('Progress')}
           >
-            <Text style={styles.cardIcon}>📊</Text>
+            <Icon name="trending-up" size={48} color="#007AFF" />
             <Text style={styles.cardTitle}>Progress</Text>
             <Text style={styles.cardDescription}>
               Track your progress, badges, and achievements
@@ -109,10 +111,6 @@ const styles = StyleSheet.create({
   cardButton: {
     padding: 20,
     alignItems: 'center',
-  },
-  cardIcon: {
-    fontSize: 48,
-    marginBottom: 12,
   },
   cardTitle: {
     fontSize: 20,
