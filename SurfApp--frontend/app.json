@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "SurfTutorApp",
+    "slug": "surf-tutor-app",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.surftutorapp"
+    },
+    "android": {
+      "package": "com.anonymous.SurfApp",
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://surf-tutor-app.com"
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your camera for pose detection."
+        }
+      ]
+    ],
+    "scheme": "surf-tutor-app"
+  }
+}

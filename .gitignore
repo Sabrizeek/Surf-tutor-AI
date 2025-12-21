@@ -97,3 +97,7 @@ ios/build/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Firebase credentials (secrets)
+config/firebase-key.json
+surfapp--backend/config/firebase-key.json

@@ -1,3 +1,0 @@
-mongodb+srv://itpmproject25:ITPM25@itpm.r2t84.mongodb.net/?retryWrites=true&w=majority&appName=ITPM==>REDACTED_MONGODB_URI
-ITPM25==>REDACTED_MONGODB_PASSWORD
-7f9a0c596ba7ca679c0b99d83aab872c==>REDACTED_JWT_SECRET
