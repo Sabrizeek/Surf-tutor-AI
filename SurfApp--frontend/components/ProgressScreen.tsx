@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { progressAPI, gamificationAPI } from '../services/api';
+import { getBadgeById, getBadgesByCategory, BadgeCategory } from '../utils/badges';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -18,6 +19,7 @@ export default function ProgressScreen() {
   const [gamification, setGamification] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<BadgeCategory>('poseEstimation');
 
   useEffect(() => {
     loadData();
@@ -55,11 +57,62 @@ export default function ProgressScreen() {
     );
   }
 
-  const completedDrills = progress.completedDrills || [];
-  const scores = progress.scores || {};
-  const badges = progress.badges || [];
+  // Get categorized progress
+  const poseProgress = progress?.poseEstimation || {};
+  const cardioProgress = progress?.cardio || {};
+  const arProgress = progress?.ar || {};
+  
+  // Legacy support
+  const completedDrills = poseProgress.completedDrills || progress.completedDrills || [];
+  const scores = poseProgress.scores || progress.scores || {};
+  const badges = poseProgress.badges || progress.badges || [];
   const points = gamification.points || 0;
   const streak = gamification.streak || 0;
+  
+  // Get current category data
+  const getCurrentCategoryData = () => {
+    switch (activeTab) {
+      case 'poseEstimation':
+        return {
+          title: 'Pose Estimation',
+          completed: poseProgress.completedDrills || [],
+          scores: poseProgress.scores || {},
+          totalTime: poseProgress.totalTime || 0,
+          sessions: poseProgress.sessions || 0,
+          badges: poseProgress.badges || [],
+        };
+      case 'cardio':
+        return {
+          title: 'Cardio',
+          completed: cardioProgress.completedWorkouts || [],
+          scores: {},
+          totalTime: cardioProgress.totalTime || 0,
+          sessions: cardioProgress.sessions || 0,
+          calories: cardioProgress.calories || 0,
+          badges: cardioProgress.badges || [],
+        };
+      case 'ar':
+        return {
+          title: 'AR',
+          completed: arProgress.completedModules || [],
+          scores: {},
+          totalTime: arProgress.totalTime || 0,
+          sessions: arProgress.sessions || 0,
+          badges: arProgress.badges || [],
+        };
+    }
+  };
+  
+  const currentData = getCurrentCategoryData();
+  
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,64 +123,117 @@ export default function ProgressScreen() {
         }
       >
         <Text style={styles.title}>Progress</Text>
+        
+        {/* Category Tabs */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'poseEstimation' && styles.tabActive]}
+            onPress={() => setActiveTab('poseEstimation')}
+          >
+            <Text style={[styles.tabText, activeTab === 'poseEstimation' && styles.tabTextActive]}>
+              Pose
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'cardio' && styles.tabActive]}
+            onPress={() => setActiveTab('cardio')}
+          >
+            <Text style={[styles.tabText, activeTab === 'cardio' && styles.tabTextActive]}>
+              Cardio
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'ar' && styles.tabActive]}
+            onPress={() => setActiveTab('ar')}
+          >
+            <Text style={[styles.tabText, activeTab === 'ar' && styles.tabTextActive]}>
+              AR
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{points}</Text>
-            <Text style={styles.statLabel}>Points</Text>
+            <Text style={styles.statValue}>{currentData.completed.length}</Text>
+            <Text style={styles.statLabel}>
+              {activeTab === 'poseEstimation' ? 'Drills' : activeTab === 'cardio' ? 'Workouts' : 'Modules'}
+            </Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{streak}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
+            <Text style={styles.statValue}>{formatTime(currentData.totalTime)}</Text>
+            <Text style={styles.statLabel}>Total Time</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{completedDrills.length}</Text>
-            <Text style={styles.statLabel}>Drills Completed</Text>
+            <Text style={styles.statValue}>{currentData.sessions}</Text>
+            <Text style={styles.statLabel}>Sessions</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{badges.length}</Text>
+            <Text style={styles.statValue}>{currentData.badges.length}</Text>
             <Text style={styles.statLabel}>Badges</Text>
           </View>
+          {activeTab === 'cardio' && currentData.calories > 0 && (
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{currentData.calories}</Text>
+              <Text style={styles.statLabel}>Calories</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Completed Drills</Text>
-          {completedDrills.length > 0 ? (
-            completedDrills.map((drill: string, index: number) => (
+          <Text style={styles.sectionTitle}>
+            {activeTab === 'poseEstimation' ? 'Completed Drills' : 
+             activeTab === 'cardio' ? 'Completed Workouts' : 
+             'Completed Modules'}
+          </Text>
+          {currentData.completed.length > 0 ? (
+            currentData.completed.map((item: string, index: number) => (
               <View key={index} style={styles.item}>
-                <Text style={styles.itemText}>✓ {drill}</Text>
+                <Text style={styles.itemText}>✓ {item}</Text>
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>No drills completed yet</Text>
+            <Text style={styles.emptyText}>
+              {activeTab === 'poseEstimation' ? 'No drills completed yet' :
+               activeTab === 'cardio' ? 'No workouts completed yet' :
+               'No modules completed yet'}
+            </Text>
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Scores</Text>
-          {Object.keys(scores).length > 0 ? (
-            Object.entries(scores).map(([key, value]: [string, any]) => (
-              <View key={key} style={styles.item}>
-                <Text style={styles.itemText}>
-                  {key}: {value}
-                </Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>No scores recorded yet</Text>
-          )}
-        </View>
+        {activeTab === 'poseEstimation' && Object.keys(currentData.scores).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Scores</Text>
+            {Object.entries(currentData.scores).map(([key, value]: [string, any]) => {
+              const scoresArray = Array.isArray(value) ? value : [value];
+              const avgScore = scoresArray.reduce((sum: number, s: number) => sum + s, 0) / scoresArray.length;
+              const bestScore = Math.max(...scoresArray);
+              return (
+                <View key={key} style={styles.item}>
+                  <Text style={styles.itemText}>
+                    {key}: Avg {avgScore.toFixed(0)}%, Best {bestScore.toFixed(0)}%
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Badges</Text>
-          {badges.length > 0 ? (
+          {currentData.badges.length > 0 ? (
             <View style={styles.badgesContainer}>
-              {badges.map((badge: string, index: number) => (
-                <View key={index} style={styles.badge}>
-                  <Icon name="emoji-events" size={32} color="#FFD700" />
-                  <Text style={styles.badgeText}>{badge}</Text>
-                </View>
-              ))}
+              {currentData.badges.map((badgeId: string, index: number) => {
+                const badge = getBadgeById(badgeId);
+                return (
+                  <View key={index} style={styles.badge}>
+                    <Icon name={badge?.icon || 'emoji-events'} size={32} color={badge?.color || '#FFD700'} />
+                    <View style={styles.badgeTextContainer}>
+                      <Text style={styles.badgeText}>{badge?.name || badgeId}</Text>
+                      <Text style={styles.badgeDescription}>{badge?.description || ''}</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           ) : (
             <Text style={styles.emptyText}>No badges earned yet</Text>
@@ -216,6 +322,31 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+  tabsContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabTextActive: {
+    color: '#fff',
+  },
   badge: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -223,15 +354,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minWidth: '45%',
+    marginBottom: 8,
   },
-  badgeIcon: {
-    fontSize: 24,
-    marginRight: 8,
+  badgeTextContainer: {
+    marginLeft: 12,
+    flex: 1,
   },
   badgeText: {
     fontSize: 14,
     color: '#333',
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  badgeDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
 });
 

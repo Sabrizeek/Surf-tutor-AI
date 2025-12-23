@@ -5,5 +5,8 @@ scikit-learn
 numpy
 pandas
 pydantic
+opencv-python
+mediapipe
+Pillow
 
 

@@ -51,109 +51,139 @@ export interface PoseAnalysisResult {
   };
 }
 
-// Confidence thresholds - ULTRA STRICT for zero false positives
-const MIN_DETECTION_CONFIDENCE = 0.7;
-const MIN_TRACKING_CONFIDENCE = 0.7;
-const MIN_VISIBILITY_THRESHOLD = 0.75; // Strict threshold: require 0.75 visibility
-const REQUIRED_KEYPOINTS_COUNT = 9; // Require at least 9 keypoints for human detection
+// Confidence thresholds - Optimized for maximum detection sensitivity
+const MIN_DETECTION_CONFIDENCE = 0.2;  // Very low for maximum sensitivity
+const MIN_TRACKING_CONFIDENCE = 0.2;   // Very low for better tracking
+const MIN_VISIBILITY_THRESHOLD = 0.2;  // Very lenient - accept low visibility landmarks
+const REQUIRED_KEYPOINTS_COUNT = 2;     // Minimum for preview (very lenient)
+const MIN_KEYPOINTS_FOR_PREVIEW = 1;    // Show preview with just 1 keypoint
 
 /**
- * Check if a person is detected in the frame
- * 
- * This function performs ULTRA STRICT validation to ensure a human body is actually visible
- * before allowing pose analysis and scoring. Zero false positives.
+ * Check if a person is detected in the frame with progressive validation
+ * Uses multi-stage detection: 2 → 4 → 6 keypoints for better accuracy
  */
 export function isPersonDetected(landmarks: PoseLandmarks): boolean {
-  // Step 1: Check for at least 9 keypoints with visibility >= 0.75
-  const requiredKeypoints = [
+  return isPersonDetectedProgressive(landmarks).detected;
+}
+
+/**
+ * Progressive person detection with confidence levels
+ * Returns detection status and confidence for UI feedback
+ */
+export function isPersonDetectedProgressive(landmarks: PoseLandmarks): {
+  detected: boolean;
+  confidence: number; // 0-100
+  stage: 'none' | 'preview' | 'partial' | 'full';
+} {
+  // Core keypoints for basic detection (minimum required)
+  const coreKeypoints = [
     landmarks.nose,
     landmarks.leftShoulder,
     landmarks.rightShoulder,
-    landmarks.leftElbow,
-    landmarks.rightElbow,
     landmarks.leftHip,
     landmarks.rightHip,
-    landmarks.leftKnee,
-    landmarks.rightKnee,
   ];
 
-  // Count points that are both present and have sufficient visibility
-  const detectedPoints = requiredKeypoints.filter(
+  // Extended keypoints for full validation
+  const extendedKeypoints = [
+    ...coreKeypoints,
+    landmarks.leftKnee,
+    landmarks.rightKnee,
+    landmarks.leftElbow,
+    landmarks.rightElbow,
+  ];
+
+  // Count points - accept ANY visibility (very lenient)
+  // We'll check visibility later, but first just see if landmarks exist
+  const coreDetected = coreKeypoints.filter(
+    (point) => point !== null && point !== undefined
+  );
+
+  const extendedDetected = extendedKeypoints.filter(
+    (point) => point !== null && point !== undefined
+  );
+  
+  // Also count points with any visibility >= 0.1 (very lenient)
+  const coreDetectedWithVisibility = coreKeypoints.filter(
     (point) =>
       point &&
       point.visibility !== undefined &&
-      point.visibility >= MIN_VISIBILITY_THRESHOLD
+      point.visibility >= 0.1  // Very low threshold
   );
 
-  // STRICT: Need at least 9 keypoints (all required points) to consider person detected
-  if (detectedPoints.length < REQUIRED_KEYPOINTS_COUNT) {
-    return false;
+  const extendedDetectedWithVisibility = extendedKeypoints.filter(
+    (point) =>
+      point &&
+      point.visibility !== undefined &&
+      point.visibility >= 0.1  // Very low threshold
+  );
+
+  // Stage 1: Preview (1+ keypoints) - Show skeleton preview
+  if (extendedDetected.length >= MIN_KEYPOINTS_FOR_PREVIEW && extendedDetected.length < REQUIRED_KEYPOINTS_COUNT) {
+    const confidence = Math.min(50, (extendedDetectedWithVisibility.length / REQUIRED_KEYPOINTS_COUNT) * 50);
+    return {
+      detected: false,
+      confidence,
+      stage: 'preview',
+    };
   }
 
-  // Step 2: Geometric body validation
-  const lShoulder = landmarks.leftShoulder;
-  const rShoulder = landmarks.rightShoulder;
-  const lHip = landmarks.leftHip;
-  const rHip = landmarks.rightHip;
-  const lElbow = landmarks.leftElbow;
-  const rElbow = landmarks.rightElbow;
-  const lKnee = landmarks.leftKnee;
-  const rKnee = landmarks.rightKnee;
+  // Stage 2: Partial (2+ keypoints) - Basic detection
+  if (coreDetected.length >= REQUIRED_KEYPOINTS_COUNT || extendedDetectedWithVisibility.length >= REQUIRED_KEYPOINTS_COUNT) {
+    // Calculate confidence based on number of detected points with visibility
+    const confidence = Math.min(100, (extendedDetectedWithVisibility.length / extendedKeypoints.length) * 100);
+    
+    // Basic geometric validation for partial detection (very lenient)
+    const lShoulder = landmarks.leftShoulder;
+    const rShoulder = landmarks.rightShoulder;
+    const lHip = landmarks.leftHip;
+    const rHip = landmarks.rightHip;
 
-  if (!lShoulder || !rShoulder || !lHip || !rHip) {
-    return false;
-  }
+    // If we have at least 2 keypoints with visibility, accept it
+    if (extendedDetectedWithVisibility.length >= 2) {
+      // Very lenient geometric checks - only reject obvious non-human shapes
+      if (lShoulder && rShoulder && lHip && rHip) {
+        const shoulderVerticalDiff = Math.abs(lShoulder.y - rShoulder.y);
+        const avgShoulderY = (lShoulder.y + rShoulder.y) / 2;
+        const avgHipY = (lHip.y + rHip.y) / 2;
+        const shoulderToHipDistance = avgHipY - avgShoulderY;
+        const shoulderWidth = Math.abs(lShoulder.x - rShoulder.x);
 
-  // Check 1: Shoulders must be roughly horizontal (abs(yL - yR) < 0.1)
-  const shoulderVerticalDiff = Math.abs(lShoulder.y - rShoulder.y);
-  if (shoulderVerticalDiff >= 0.1) {
-    // Shoulders are too misaligned - likely not a person
-    return false;
-  }
-
-  // Check 2: Hips must be clearly below shoulders (avgY_hips > avgY_shoulders + 0.15)
-  const avgShoulderY = (lShoulder.y + rShoulder.y) / 2;
-  const avgHipY = (lHip.y + rHip.y) / 2;
-  if (avgHipY <= avgShoulderY + 0.15) {
-    // Hips should be clearly below shoulders - if not, detection is likely wrong
-    return false;
-  }
-
-  // Check 3: Shoulder-to-hip distance must be realistic (0.2-0.6 of frame height)
-  // Since landmarks are normalized (0-1), we check the vertical distance
-  const shoulderToHipDistance = avgHipY - avgShoulderY;
-  if (shoulderToHipDistance < 0.2 || shoulderToHipDistance > 0.6) {
-    // Body proportions not realistic
-    return false;
-  }
-
-  // Check 4: Shoulder width must be realistic (not too close or too far)
-  const shoulderWidth = Math.abs(lShoulder.x - rShoulder.x);
-  if (shoulderWidth < 0.05 || shoulderWidth > 0.4) {
-    // Shoulders too close or too far - likely not a person
-    return false;
-  }
-
-  // Check 5: Body shape consistency - elbows should be between shoulders and hips
-  if (lElbow && rElbow) {
-    const avgElbowY = (lElbow.y + rElbow.y) / 2;
-    if (avgElbowY < avgShoulderY || avgElbowY > avgHipY) {
-      // Elbows in wrong position - body shape inconsistent
-      return false;
+        // Very lenient validation - only reject obviously wrong shapes
+        if (
+          shoulderVerticalDiff < 0.3 && // Shoulders roughly horizontal (very lenient)
+          shoulderToHipDistance > 0.05 && // Hips below shoulders (very lenient)
+          shoulderToHipDistance < 1.0 && // Realistic body proportions (very lenient)
+          shoulderWidth > 0.01 && // Shoulders not too close (very lenient)
+          shoulderWidth < 0.8 // Shoulders not too far (very lenient)
+        ) {
+          return {
+            detected: true,
+            confidence,
+            stage: extendedDetectedWithVisibility.length >= 6 ? 'full' : 'partial',
+          };
+        }
+      }
+      
+      // If we have 2+ keypoints but geometry check failed, still return partial
+      // This helps with edge cases
+      if (extendedDetectedWithVisibility.length >= 2) {
+        return {
+          detected: true,
+          confidence: Math.max(30, confidence * 0.7), // Lower confidence but still detected
+          stage: 'partial',
+        };
+      }
     }
   }
 
-  // Check 6: Knees should be below hips
-  if (lKnee && rKnee) {
-    const avgKneeY = (lKnee.y + rKnee.y) / 2;
-    if (avgKneeY <= avgHipY) {
-      // Knees should be below hips
-      return false;
-    }
-  }
-
-  return true;
+  return {
+    detected: false,
+    confidence: 0,
+    stage: 'none',
+  };
 }
+
 
 /**
  * Calculate angle between three points
@@ -168,6 +198,68 @@ export function calculateAngle(
     Math.atan2(point1.y - point2.y, point1.x - point2.x);
   let angle = Math.abs((radians * 180.0) / Math.PI);
   return angle > 180.0 ? 360 - angle : angle;
+}
+
+/**
+ * Calculate knee angle (hip-knee-ankle)
+ */
+export function calculateKneeAngle(
+  hip: PoseLandmark,
+  knee: PoseLandmark,
+  ankle: PoseLandmark
+): number {
+  return calculateAngle(hip, knee, ankle);
+}
+
+/**
+ * Calculate hip angle (shoulder-hip-knee)
+ */
+export function calculateHipAngle(
+  shoulder: PoseLandmark,
+  hip: PoseLandmark,
+  knee: PoseLandmark
+): number {
+  return calculateAngle(shoulder, hip, knee);
+}
+
+/**
+ * Calculate head angle (nose-shoulder-hip)
+ */
+export function calculateHeadAngle(
+  nose: PoseLandmark,
+  shoulder: PoseLandmark,
+  hip: PoseLandmark
+): number {
+  return calculateAngle(nose, shoulder, hip);
+}
+
+/**
+ * Get angle difference and direction for feedback
+ */
+export function getAngleDifference(
+  current: number,
+  targetMin: number,
+  targetMax: number
+): { degrees: number; direction: 'more' | 'less' | 'perfect'; message: string } {
+  if (current >= targetMin && current <= targetMax) {
+    return { degrees: 0, direction: 'perfect', message: 'Perfect!' };
+  }
+  
+  if (current < targetMin) {
+    const diff = targetMin - current;
+    return { 
+      degrees: Math.round(diff), 
+      direction: 'more', 
+      message: `Increase by ${Math.round(diff)}°` 
+    };
+  } else {
+    const diff = current - targetMax;
+    return { 
+      degrees: Math.round(diff), 
+      direction: 'less', 
+      message: `Decrease by ${Math.round(diff)}°` 
+    };
+  }
 }
 
 /**
@@ -369,10 +461,11 @@ export function analyzePaddling(landmarks: PoseLandmarks): PoseAnalysisResult {
     score = 95;
   } else {
     if (!backIsArched) {
-      feedback.push('Lift your chest and head!');
+      const archDiff = PADDLE_ARCH_MAX - backArchAngle;
+      feedback.push(`Lift your chest and head! Arch your back ${Math.round(archDiff)}° more (current: ${Math.round(backArchAngle)}°, target: <${PADDLE_ARCH_MAX}°)`);
     }
     if (!headIsUp) {
-      feedback.push('Look forward!');
+      feedback.push('Look forward! Raise your head so your nose is above your shoulders');
     }
     score = (backIsArched ? 50 : 0) + (headIsUp ? 45 : 0);
   }
@@ -546,10 +639,12 @@ export function analyzeTubeStance(landmarks: PoseLandmarks): PoseAnalysisResult 
     score = 95;
   } else {
     if (!kneesLow) {
-      feedback.push('Get LOWER! Bend knees more!');
+      const kneeDiff = avgKneeAngle - TUBE_KNEE_MAX;
+      feedback.push(`Get LOWER! Bend knees ${Math.round(kneeDiff)}° more (current: ${Math.round(avgKneeAngle)}°, target: <${TUBE_KNEE_MAX}°)`);
     }
     if (!hipsLow) {
-      feedback.push('Crouch! Bring chest to knees!');
+      const hipDiff = avgHipAngle - TUBE_HIP_MAX;
+      feedback.push(`Crouch! Bring chest to knees! Lower hips ${Math.round(hipDiff)}° more (current: ${Math.round(avgHipAngle)}°, target: <${TUBE_HIP_MAX}°)`);
     }
     score = (kneesLow ? 50 : 0) + (hipsLow ? 45 : 0);
   }

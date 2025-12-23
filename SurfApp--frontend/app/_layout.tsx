@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../context/AuthContext';
 import { StatusBar } from 'react-native';
@@ -16,3 +15,4 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+

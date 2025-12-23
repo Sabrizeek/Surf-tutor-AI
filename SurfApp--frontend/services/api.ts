@@ -10,9 +10,14 @@ import { Platform } from 'react-native';
 const getBaseURL = () => {
   // @ts-ignore - __DEV__ is a global variable in React Native
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    // For physical devices, use your computer's IP address
+    // For Android emulator, use 10.0.2.2
+    // For iOS simulator, use localhost
     if (Platform.OS === 'android') {
-      // Use localhost with adb reverse (adb reverse tcp:3000 tcp:3000)
-      return 'http://localhost:3000';
+      // Check if running on emulator or physical device
+      // Physical device: use computer's current IP (192.168.8.100)
+      // Emulator: use 10.0.2.2
+      return 'http://192.168.8.100:3000'; // Updated IP address
     }
     return 'http://localhost:3000'; // iOS simulator
   }
@@ -26,6 +31,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 20000, // 20 seconds timeout for pose detection (increased for complex model)
 });
 
 // Add token to requests if available
@@ -124,12 +130,13 @@ export const cardioAPI = {
 
 // Progress API
 export const progressAPI = {
-  saveProgress: async (completedDrills: string[], scores: Record<string, number>, badges: string[]) => {
-    const response = await api.post('/api/progress/save', {
-      completedDrills,
-      scores,
-      badges,
-    });
+  saveProgress: async (category?: string, data?: any, completedDrills?: string[], scores?: Record<string, number>, badges?: string[]) => {
+    // Support both new categorized format and legacy format
+    const body = category && data
+      ? { category, data }
+      : { completedDrills, scores, badges };
+    
+    const response = await api.post('/api/progress/save', body);
     return response.data;
   },
 
@@ -152,6 +159,58 @@ export const gamificationAPI = {
 
   getStats: async () => {
     const response = await api.get('/api/gamification/stats');
+    return response.data;
+  },
+};
+
+// Session API - Phase 4.3: Session Replay
+export const sessionAPI = {
+  saveSession: async (sessionData: {
+    drillId: string;
+    startTime: number;
+    endTime: number;
+    duration: number;
+    landmarksHistory: Array<{
+      timestamp: number;
+      landmarks: any;
+      score: number;
+      feedback: string[];
+    }>;
+    finalScore: number;
+    badgesEarned: string[];
+    xpEarned: number;
+  }) => {
+    const userId = await AsyncStorage.getItem('userId');
+    const response = await api.post('/api/sessions/save', {
+      userId,
+      ...sessionData,
+    });
+    return response.data;
+  },
+  
+  getSessions: async (options?: {
+    drillId?: string;
+    limit?: number;
+    skip?: number;
+  }) => {
+    const response = await api.get('/api/sessions', { params: options });
+    return response.data;
+  },
+  
+  getSession: async (sessionId: string) => {
+    const response = await api.get(`/api/sessions/${sessionId}`);
+    return response.data;
+  },
+};
+
+// Pose Detection API
+export const poseAPI = {
+  detectPose: async (imageBase64: string, drillId?: string, sessionId?: string) => {
+    const response = await api.post('/api/pose/detect', {
+      image: imageBase64,
+      drillId,
+      sessionId, // For velocity tracking (Phase 5)
+    });
     return response.data;
   },
 };
