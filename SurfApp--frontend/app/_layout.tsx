@@ -1,18 +1,16 @@
 import { Stack } from 'expo-router';
-import { AuthProvider } from '../context/AuthContext';
+import { CardioProfileProvider } from '../context/CardioProfileContext';
 import { StatusBar } from 'react-native';
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
+    <CardioProfileProvider>
       <StatusBar barStyle="dark-content" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </AuthProvider>
+    </CardioProfileProvider>
   );
 }
 

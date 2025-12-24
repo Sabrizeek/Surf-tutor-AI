@@ -4,14 +4,23 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { cardioAPI, authAPI } from '../services/api';
+import { cardioAPI } from '../services/api';
+import { useCardioProfile } from '../context/CardioProfileContext';
+import CardioQuizScreen from './CardioQuizScreen';
+import WorkoutExecutionScreen from './WorkoutExecutionScreen';
+import PlanExplanationModal from './PlanExplanationModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { calculateAdaptiveAdjustments, WorkoutProgress } from '../utils/adaptiveProgress';
+import { useRouter } from 'expo-router';
+
+const WORKOUT_PROGRESS_KEY = '@workout_progress';
+const PLAN_HISTORY_KEY = '@cardio_plan_history';
 
 interface WorkoutPlan {
   planName?: string;
@@ -24,62 +33,131 @@ interface WorkoutPlan {
 }
 
 export default function CardioPlansScreen() {
-  const [skillLevel, setSkillLevel] = useState('');
-  const [goal, setGoal] = useState<string[]>([]);
+  const router = useRouter();
+  const { profile, isLoading: profileLoading, isQuizCompleted, refreshProfile } = useCardioProfile();
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
   const [recommendations, setRecommendations] = useState<WorkoutPlan[]>([]);
-  const [userProfile, setUserProfile] = useState<any>(null);
-
-  const skillLevels = ['Beginner', 'Intermediate', 'Advanced', 'Pro'];
-  const goals = ['Endurance', 'Strength', 'Flexibility', 'Balance', 'Power', 'Stamina', 'Fat Loss'];
+  const [explanationPlan, setExplanationPlan] = useState<WorkoutPlan | null>(null);
+  const [adaptiveAdjustments, setAdaptiveAdjustments] = useState<any>(null);
 
   useEffect(() => {
-    loadUserProfile();
-  }, []);
+    if (!profileLoading && isQuizCompleted && profile) {
+      // Auto-generate plans when quiz is completed
+      handleGetRecommendations();
+    }
+  }, [profileLoading, isQuizCompleted, profile]);
 
-  const loadUserProfile = async () => {
+  const handleQuizComplete = async () => {
+    setShowQuiz(false);
+    await refreshProfile();
+    // Auto-generate plans after quiz completion
+    setTimeout(() => {
+      handleGetRecommendations();
+    }, 100);
+  };
+
+  const loadCardioWorkouts = async (): Promise<WorkoutProgress[]> => {
     try {
-      setLoadingProfile(true);
-      const response = await authAPI.getProfile();
-      const user = response.user;
-      setUserProfile(user);
-      if (user.skillLevel) setSkillLevel(user.skillLevel);
-      // Handle goal as array or string (backward compatibility)
-      const userGoals = Array.isArray(user.goal) ? user.goal : (user.goal ? [user.goal] : []);
-      setGoal(userGoals);
-    } catch (error: any) {
-      console.error('Error loading profile:', error);
-      Alert.alert('Error', 'Failed to load profile. Please try again.');
-    } finally {
-      setLoadingProfile(false);
+      const data = await AsyncStorage.getItem(WORKOUT_PROGRESS_KEY);
+      if (data) {
+        return JSON.parse(data) || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error loading cardio workouts:', error);
+      return [];
+    }
+  };
+
+  const savePlanToHistory = async (plans: WorkoutPlan[]) => {
+    try {
+      const existing = await AsyncStorage.getItem(PLAN_HISTORY_KEY);
+      const history = existing ? JSON.parse(existing) : [];
+      
+      const plansToSave = plans.map(plan => ({
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        planName: plan.planName || 'Workout Plan',
+        exercises: typeof plan.exercises === 'string' 
+          ? plan.exercises.split(';').map(e => e.trim())
+          : (Array.isArray(plan.exercises) ? plan.exercises : []),
+        durationMinutes: plan.durationMinutes || 30,
+        skillLevel: plan.skillLevel || profile?.fitnessLevel || 'Beginner',
+        goal: plan.goal || profile?.goal || '',
+        generatedAt: new Date().toISOString(),
+        quizAnswers: profile ? {
+          fitnessLevel: profile.fitnessLevel,
+          goal: profile.goal,
+          duration: profile.trainingDuration,
+          bmi: profile.height && profile.weight 
+            ? (profile.weight / Math.pow(profile.height / 100, 2)).toFixed(1)
+            : 'N/A',
+          limitations: profile.limitations || [],
+        } : undefined,
+      }));
+      
+      // Add to history (keep last 10)
+      const updatedHistory = [...plansToSave, ...history].slice(0, 10);
+      await AsyncStorage.setItem(PLAN_HISTORY_KEY, JSON.stringify(updatedHistory));
+    } catch (error) {
+      console.error('Error saving plan history:', error);
     }
   };
 
   const handleGetRecommendations = async () => {
-    if (!skillLevel || !goal || goal.length === 0) {
-      Alert.alert('Error', 'Please select skill level and at least one goal');
+    if (!profile || !profile.fitnessLevel || !profile.goal || !profile.trainingDuration) {
+      Alert.alert('Error', 'Please complete the fitness quiz first');
       return;
     }
 
     setLoading(true);
     try {
+      // Load workout history for adaptive adjustments
+      const workouts = await loadCardioWorkouts();
+      
+      // Ensure workouts is an array
+      const safeWorkouts = Array.isArray(workouts) ? workouts : [];
+      const recentWorkouts = safeWorkouts.slice(-5); // Last 5 workouts
+      const adjustments = calculateAdaptiveAdjustments(recentWorkouts);
+      setAdaptiveAdjustments(adjustments);
+      
+      // Map quiz data to plan generation format
+      const skillLevel = profile.fitnessLevel;
+      let goal: string[] = [];
+      
+      // Map quiz goal to ML model goals
+      if (profile.goal === 'Warm up only') {
+        goal = ['Endurance'];
+      } else if (profile.goal === 'Improve endurance') {
+        goal = ['Endurance', 'Stamina'];
+      } else if (profile.goal === 'Improve explosive pop-up speed') {
+        goal = ['Power'];
+      }
+
       const userDetails: any = {};
-      if (userProfile) {
-        if (userProfile.height) userDetails.height = userProfile.height;
-        if (userProfile.weight) userDetails.weight = userProfile.weight;
-        if (userProfile.age) userDetails.age = userProfile.age;
-        if (userProfile.bmi) userDetails.bmi = userProfile.bmi;
+      if (profile.height) userDetails.height = profile.height;
+      if (profile.weight) userDetails.weight = profile.weight;
+      // Calculate BMI
+      if (profile.height && profile.weight) {
+        userDetails.bmi = profile.weight / Math.pow(profile.height / 100, 2);
       }
 
       const response = await cardioAPI.getRecommendations(
         skillLevel,
         goal,
-        Object.keys(userDetails).length > 0 ? userDetails : undefined
+          Object.keys(userDetails).length > 0 ? userDetails : undefined,
+        profile.trainingDuration, // durationRange
+        profile.limitations && profile.limitations.length > 0 && !profile.limitations.includes('None') 
+          ? profile.limitations 
+          : undefined, // limitations
+        Object.keys(adjustments).length > 0 ? adjustments : undefined // adaptive adjustments
       );
 
       if (response.recommendedPlans && Array.isArray(response.recommendedPlans)) {
         setRecommendations(response.recommendedPlans);
+        // Save plans to history
+        await savePlanToHistory(response.recommendedPlans);
       } else if (response.recommendedExercises) {
         // Fallback: if we get old format, convert to new format
         const exercises = Array.isArray(response.recommendedExercises)
@@ -88,10 +166,10 @@ export default function CardioPlansScreen() {
         const plans: WorkoutPlan[] = exercises.map((ex, idx) => ({
           planName: `Workout Plan ${idx + 1}`,
           skillLevel,
-          goal,
+          goal: goal.join(', '),
           exercises: typeof ex === 'string' ? ex.split(';') : ex,
           durationMinutes: 30,
-          focus: goal,
+          focus: goal.join(', '),
         }));
         setRecommendations(plans);
       } else {
@@ -129,99 +207,84 @@ export default function CardioPlansScreen() {
     return [];
   };
 
+  const handleWorkoutComplete = () => {
+    setSelectedWorkout(null);
+  };
+
+  if (profileLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (selectedWorkout) {
+    return <WorkoutExecutionScreen workoutPlan={selectedWorkout} onComplete={handleWorkoutComplete} />;
+  }
+
+  if (showQuiz || !isQuizCompleted) {
+    return <CardioQuizScreen onComplete={handleQuizComplete} />;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Cardio Plans</Text>
-        <Text style={styles.subtitle}>
-          Enter your details to get personalized workout recommendations
-        </Text>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Skill Level *</Text>
-          <View style={styles.buttonGroup}>
-            {skillLevels.map((level) => (
-              <TouchableOpacity
-                key={level}
-                style={[
-                  styles.button,
-                  skillLevel === level && styles.buttonActive,
-                ]}
-                onPress={() => setSkillLevel(level)}
-              >
-                <Text
-                  style={[
-                    styles.buttonText,
-                    skillLevel === level && styles.buttonTextActive,
-                  ]}
-                >
-                  {level}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>Cardio Plans</Text>
+            <Text style={styles.subtitle}>
+              Personalized workout recommendations
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={() => router.push('/cardio-history')}
+            >
+              <Icon name="history" size={20} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.retakeButton}
+              onPress={() => setShowQuiz(true)}
+            >
+              <Icon name="refresh" size={20} color="#007AFF" />
+              <Text style={styles.retakeButtonText}>Retake Quiz</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Goals * (Select Multiple)</Text>
-          <View style={styles.buttonGroup}>
-            {goals.map((g) => {
-              const isSelected = goal.includes(g);
-              return (
-                <TouchableOpacity
-                  key={g}
-                  style={[styles.button, isSelected && styles.buttonActive]}
-                  onPress={() => {
-                    if (isSelected) {
-                      setGoal(goal.filter(goalItem => goalItem !== g));
-                    } else {
-                      setGoal([...goal, g]);
-                    }
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      isSelected && styles.buttonTextActive,
-                    ]}
-                  >
-                    {g} {isSelected ? '✓' : ''}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {userProfile && (
+        {profile && (
           <View style={styles.profileInfo}>
             <Text style={styles.profileInfoText}>
-              Using profile: {userProfile.name || userProfile.email}
-              {userProfile.height && ` • ${userProfile.height}cm`}
-              {userProfile.weight && ` • ${userProfile.weight}kg`}
-              {userProfile.age && ` • ${userProfile.age}yrs`}
+              Fitness Level: {profile.fitnessLevel}
+              {profile.height && ` • ${profile.height}cm`}
+              {profile.weight && ` • ${profile.weight}kg`}
             </Text>
             <Text style={styles.profileInfoSubtext}>
-              Update your profile to get better recommendations
+              Goal: {profile.goal} • Duration: {profile.trainingDuration}
             </Text>
+            {profile.limitations && profile.limitations.length > 0 && !profile.limitations.includes('None') && (
+              <Text style={styles.profileInfoSubtext}>
+                Limitations: {profile.limitations.filter(l => l !== 'None').join(', ')}
+              </Text>
+            )}
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleGetRecommendations}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Get Recommendations</Text>
-          )}
-        </TouchableOpacity>
-
-        {recommendations.length > 0 && (
+        {loading ? (
+          <View style={styles.loadingSection}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Generating your workout plans...</Text>
+          </View>
+        ) : recommendations.length > 0 ? (
           <View style={styles.recommendationsContainer}>
-            <Text style={styles.recommendationsTitle}>Recommended Workout Plans:</Text>
+            <Text style={styles.recommendationsTitle}>
+              Choose Your Workout Plan ({recommendations.length} options):
+            </Text>
             {recommendations.map((plan, index) => {
               const exercises = parseExercises(plan.exercises);
               return (
@@ -241,7 +304,7 @@ export default function CardioPlansScreen() {
                         <Text style={styles.planDetailText}>Focus: {plan.focus}</Text>
                       </View>
                     )}
-                    {plan.equipment && (
+                    {plan.equipment && plan.equipment !== 'None' && (
                       <View style={styles.planDetailRow}>
                         <Icon name="build" size={16} color="#666" />
                         <Text style={styles.planDetailText}>Equipment: {plan.equipment}</Text>
@@ -252,20 +315,59 @@ export default function CardioPlansScreen() {
                   {exercises.length > 0 && (
                     <View style={styles.exercisesSection}>
                       <Text style={styles.exercisesTitle}>Exercises ({exercises.length}):</Text>
-                      {exercises.map((exercise, exIndex) => (
+                      {exercises.slice(0, 5).map((exercise, exIndex) => (
                         <View key={exIndex} style={styles.exerciseItem}>
                           <Text style={styles.exerciseNumber}>{exIndex + 1}.</Text>
                           <Text style={styles.exerciseText}>{exercise}</Text>
                         </View>
                       ))}
+                      {exercises.length > 5 && (
+                        <Text style={styles.moreExercisesText}>... and {exercises.length - 5} more exercises</Text>
+                      )}
                     </View>
                   )}
+
+                  <View style={styles.planActions}>
+                    <TouchableOpacity
+                      style={styles.infoButton}
+                      onPress={() => setExplanationPlan(plan)}
+                    >
+                      <Icon name="info" size={18} color="#007AFF" />
+                      <Text style={styles.infoButtonText}>Why this plan?</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.startWorkoutButton}
+                      onPress={() => setSelectedWorkout(plan)}
+                    >
+                      <Icon name="play-arrow" size={20} color="#fff" />
+                      <Text style={styles.startWorkoutButtonText}>Start Workout</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               );
             })}
           </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Icon name="fitness-center" size={64} color="#ccc" />
+            <Text style={styles.emptyStateText}>No workout plans yet</Text>
+            <Text style={styles.emptyStateSubtext}>
+              Complete the fitness quiz to get personalized recommendations
+            </Text>
+          </View>
         )}
       </ScrollView>
+
+      {/* Plan Explanation Modal */}
+      {explanationPlan && profile && (
+        <PlanExplanationModal
+          visible={!!explanationPlan}
+          plan={explanationPlan}
+          quizAnswers={profile}
+          adaptiveAdjustments={adaptiveAdjustments}
+          onClose={() => setExplanationPlan(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -278,6 +380,49 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingSection: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  historyButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#e3f2fd',
+  },
+  retakeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#e3f2fd',
+  },
+  retakeButtonText: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -287,100 +432,37 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  button: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  buttonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  buttonText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  buttonTextActive: {
-    color: '#fff',
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  recommendationsContainer: {
-    marginTop: 24,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  recommendationsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
   },
   profileInfo: {
     backgroundColor: '#e3f2fd',
-    padding: 12,
+    padding: 16,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   profileInfoText: {
     fontSize: 14,
     color: '#1976d2',
     fontWeight: '600',
+    marginBottom: 4,
   },
   profileInfoSubtext: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
   },
+  recommendationsContainer: {
+    marginTop: 8,
+  },
+  recommendationsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+  },
   planCard: {
     backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -391,7 +473,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   planName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
@@ -423,7 +505,7 @@ const styles = StyleSheet.create({
   },
   exerciseItem: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 6,
     alignItems: 'flex-start',
   },
   exerciseNumber: {
@@ -439,5 +521,65 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
+  moreExercisesText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  startWorkoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    padding: 14,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  startWorkoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 40,
+    marginTop: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+  planActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 12,
+  },
+  infoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#e3f2fd',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  infoButtonText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
 });
-

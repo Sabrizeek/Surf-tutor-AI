@@ -11,7 +11,6 @@ const { PORT } = require('./config/constants');
 const { errorHandler, notFoundHandler } = require('./middlewares/errorHandler');
 
 // Import routes
-const authRouter = require('./routes/auth');
 const progressRouter = require('./routes/progress');
 const gamificationRouter = require('./routes/gamification');
 const poseRouter = require('./routes/pose');
@@ -46,7 +45,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'surf-ai-backend' }));
 
 // API routes
-app.use('/api/auth', authRouter);
 app.use('/api/progress', progressRouter);
 app.use('/api/gamification', gamificationRouter);
 app.use('/api/pose', poseRouter);
@@ -82,10 +80,6 @@ async function startServer() {
     console.log(`🚀 Surf AI Backend running on http://localhost:${PORT}`);
     console.log('   Available endpoints:');
     console.log('   - GET  /health');
-    console.log('   - POST /api/auth/register');
-    console.log('   - POST /api/auth/login');
-    console.log('   - GET  /api/auth/profile');
-    console.log('   - PUT  /api/auth/profile');
     console.log('   - POST /api/progress/save');
     console.log('   - GET  /api/progress/load');
     console.log('   - POST /api/gamification/award');

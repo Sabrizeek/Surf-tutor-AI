@@ -6,10 +6,9 @@
 const express = require('express');
 const router = express.Router();
 const progressController = require('../controllers/progressController');
-const { authMiddleware } = require('../middlewares/auth');
 
-// All routes require authentication
-router.post('/save', authMiddleware, progressController.saveProgress);
-router.get('/load', authMiddleware, progressController.loadProgress);
+// All routes (no auth required)
+router.post('/save', progressController.saveProgress);
+router.get('/load', progressController.loadProgress);
 
 module.exports = router;

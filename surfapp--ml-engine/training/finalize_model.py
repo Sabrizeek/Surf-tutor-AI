@@ -49,12 +49,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # --- 4. Train Model ---
 model = RandomForestClassifier(n_estimators=100, random_state=42)
 model.fit(X_train, y_train)
-print("✅ Model training complete!")
+print("Model training complete!")
 
 # --- 5. Check the Model's Accuracy ---
 y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
-print(f"📈 Model Accuracy on Test Data: {accuracy * 100:.2f}%") # This should be much higher now!
+print(f"Model Accuracy on Test Data: {accuracy * 100:.2f}%") # This should be much higher now!
 
 # --- 6. Save the Model and Encoders for Your App ---
 joblib.dump(model, 'recommender_model.joblib')
@@ -63,4 +63,4 @@ joblib.dump(goal_encoder, 'goal_encoder.joblib')
 
 joblib.dump(exercise_encoder, 'exercise_encoder.joblib')
 
-print("💾 Model and encoders have been saved successfully.")
+print("Model and encoders have been saved successfully.")

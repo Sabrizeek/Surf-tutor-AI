@@ -6,10 +6,9 @@
 const express = require('express');
 const router = express.Router();
 const gamificationController = require('../controllers/gamificationController');
-const { authMiddleware } = require('../middlewares/auth');
 
-// All routes require authentication
-router.post('/award', authMiddleware, gamificationController.awardPoints);
-router.get('/stats', authMiddleware, gamificationController.getStats);
+// All routes (no auth required)
+router.post('/award', gamificationController.awardPoints);
+router.get('/stats', gamificationController.getStats);
 
 module.exports = router;

@@ -11,31 +11,15 @@ const { asyncHandler } = require('../middlewares/errorHandler');
  * POST /api/gamification/award
  */
 const awardPoints = asyncHandler(async (req, res) => {
-  console.log('[gamification] Award request for user:', req.user?.id);
-  
-  if (!req.user || !req.user.id) {
-    return res.status(400).json({ error: 'invalid user id' });
-  }
+  console.log('[gamification] Award request (auth removed)');
   
   const { points = 0, badge = null, streak = null } = req.body;
   
   try {
-    const user = await User.updateGamification(req.user.id, {
-      points,
-      badges: badge,
-      streak
-    });
-    
-    if (!user) {
-      return res.status(404).json({ error: 'user not found' });
-    }
-    
-    console.log('[gamification] Award granted successfully');
-    res.json({ user });
+    // Since auth is removed, gamification is stored locally in frontend
+    console.log('[gamification] Award data received (stored locally in app)');
+    res.json({ success: true, message: 'Award stored locally' });
   } catch (err) {
-    if (err.message === 'Invalid user ID format') {
-      return res.status(400).json({ error: 'invalid user id' });
-    }
     throw err;
   }
 });
@@ -45,21 +29,13 @@ const awardPoints = asyncHandler(async (req, res) => {
  * GET /api/gamification/stats
  */
 const getStats = asyncHandler(async (req, res) => {
-  console.log('[gamification] Stats request for user:', req.user?.id);
-  
-  if (!req.user || !req.user.id) {
-    return res.status(400).json({ error: 'invalid user id' });
-  }
+  console.log('[gamification] Stats request (auth removed)');
   
   try {
-    const gamification = await User.getGamification(req.user.id);
-    
-    console.log('[gamification] Stats loaded successfully');
-    res.json({ gamification });
+    // Since auth is removed, gamification is stored locally in frontend
+    console.log('[gamification] Stats loaded from local storage');
+    res.json({ gamification: {} });
   } catch (err) {
-    if (err.message === 'Invalid user ID format') {
-      return res.status(400).json({ error: 'invalid user id' });
-    }
     throw err;
   }
 });

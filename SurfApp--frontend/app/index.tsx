@@ -1,22 +1,19 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        router.replace('/(tabs)/home');
-      } else {
-        router.replace('/login');
-      }
-    }
-  }, [isLoading, isAuthenticated]);
+    // Always route to home screen (no authentication)
+    const timer = setTimeout(() => {
+      router.replace('/(tabs)/home');
+    }, 1500); // Brief splash screen
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

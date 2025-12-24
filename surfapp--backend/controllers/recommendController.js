@@ -18,7 +18,7 @@ const normalize = (s) => (typeof s === 'string' ? s.trim().toLowerCase() : '');
  * POST /api/recommend
  */
 const getRecommendation = asyncHandler(async (req, res) => {
-  const { skillLevel, goal, userId, userDetails } = req.body || {};
+  const { skillLevel, goal, userId, userDetails, durationRange, limitations, adaptiveAdjustments } = req.body || {};
 
   if (!skillLevel || !goal || (Array.isArray(goal) && goal.length === 0)) {
     return res.status(400).json({ error: 'Missing required fields: skillLevel and goal' });
@@ -31,7 +31,7 @@ const getRecommendation = asyncHandler(async (req, res) => {
   const goalArray = Array.isArray(goal) ? goal : [goal];
   const normalizedGoals = goalArray.map(g => GOAL_MAP[normalize(g)] || g).filter(Boolean);
 
-  console.log('[recommend] incoming', { skillLevel, goal, userId, userDetails });
+  console.log('[recommend] incoming', { skillLevel, goal, userId, userDetails, durationRange, limitations });
   console.log('[recommend] normalized', { skillLevel: normalizedSkill, goals: normalizedGoals });
   console.log('[recommend] modelUrl', MODEL_SERVER_URL);
 
@@ -40,6 +40,18 @@ const getRecommendation = asyncHandler(async (req, res) => {
   // Attach optional user details (bmi, age, weight, height, goals, etc.)
   if (userDetails && typeof userDetails === 'object') {
     payload.userDetails = userDetails;
+  }
+  
+  // Attach durationRange and limitations for template-based generation
+  if (durationRange) {
+    payload.durationRange = durationRange;
+  }
+  if (limitations && Array.isArray(limitations) && limitations.length > 0) {
+    payload.limitations = limitations;
+  }
+  // Attach adaptive adjustments for adaptive plan generation
+  if (adaptiveAdjustments && typeof adaptiveAdjustments === 'object') {
+    payload.adaptiveAdjustments = adaptiveAdjustments;
   }
 
   try {

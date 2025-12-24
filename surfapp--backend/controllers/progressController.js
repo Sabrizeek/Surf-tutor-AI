@@ -11,11 +11,7 @@ const { asyncHandler } = require('../middlewares/errorHandler');
  * POST /api/progress/save
  */
 const saveProgress = asyncHandler(async (req, res) => {
-  console.log('[progress] Save progress request for user:', req.user?.id);
-  
-  if (!req.user || !req.user.id) {
-    return res.status(400).json({ error: 'invalid user id' });
-  }
+  console.log('[progress] Save progress request (auth removed)');
   
   // Support both legacy format and new categorized format
   const { category, data, completedDrills, scores, badges } = req.body;
@@ -43,18 +39,11 @@ const saveProgress = asyncHandler(async (req, res) => {
       };
     }
     
-    const user = await User.updateProgress(req.user.id, progressData);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'user not found' });
-    }
-    
-    console.log('[progress] Progress saved successfully');
-    res.json({ user });
+    // Since auth is removed, progress is stored locally in frontend
+    // This endpoint can return success without database operations
+    console.log('[progress] Progress data received (stored locally in app)');
+    res.json({ success: true, message: 'Progress stored locally' });
   } catch (err) {
-    if (err.message === 'Invalid user ID format') {
-      return res.status(400).json({ error: 'invalid user id' });
-    }
     throw err;
   }
 });
@@ -64,21 +53,14 @@ const saveProgress = asyncHandler(async (req, res) => {
  * GET /api/progress/load
  */
 const loadProgress = asyncHandler(async (req, res) => {
-  console.log('[progress] Load progress request for user:', req.user?.id);
-  
-  if (!req.user || !req.user.id) {
-    return res.status(400).json({ error: 'invalid user id' });
-  }
+  console.log('[progress] Load progress request (auth removed)');
   
   try {
-    const progress = await User.getProgress(req.user.id);
-    
-    console.log('[progress] Progress loaded successfully');
-    res.json({ progress });
+    // Since auth is removed, progress is stored locally in frontend
+    // Return empty progress structure
+    console.log('[progress] Progress loaded from local storage');
+    res.json({ progress: {} });
   } catch (err) {
-    if (err.message === 'Invalid user ID format') {
-      return res.status(400).json({ error: 'invalid user id' });
-    }
     throw err;
   }
 });

@@ -6,19 +6,18 @@
 const express = require('express');
 const router = express.Router();
 const sessionController = require('../controllers/sessionController');
-const { authenticateToken } = require('../middlewares/auth');
 
-// Save session
-router.post('/save', authenticateToken, sessionController.saveSession);
+// Save session (no auth required)
+router.post('/save', sessionController.saveSession);
 
-// Get user sessions
-router.get('/', authenticateToken, sessionController.getUserSessions);
+// Get user sessions (no auth required)
+router.get('/', sessionController.getUserSessions);
 
-// Get specific session
-router.get('/:sessionId', authenticateToken, sessionController.getSession);
+// Get specific session (no auth required)
+router.get('/:sessionId', sessionController.getSession);
 
-// Get session statistics
-router.get('/stats/summary', authenticateToken, sessionController.getSessionStats);
+// Get session statistics (no auth required)
+router.get('/stats/summary', sessionController.getSessionStats);
 
 module.exports = router;
 

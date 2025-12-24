@@ -591,8 +591,19 @@ def detect_pose_from_base64(base64_image: str, session_id: str = None) -> Dict:
             'confidence': 0.0,
             'stability_score': 0.0,
             'landmark_count': 0,
+            'boundingBox': None,
+            'detectionQuality': 0.0,
+            'bodyCompleteness': {
+                'head': False,
+                'torso': False,
+                'legs': False,
+                'feet': False
+            },
+            'calibrationStatus': 'not_detected',
+            'averageVisibility': 0.0,
             'lighting': 'poor',  # Phase 5
             'estimatedDistance': 'too_far',  # Phase 5
+            'velocity': None,
         }
 
 def detect_pose_from_image(image: np.ndarray) -> Dict:
@@ -698,7 +709,18 @@ def detect_pose_from_image(image: np.ndarray) -> Dict:
             'confidence': 0.0,
             'stability_score': 0.0,
             'landmark_count': 0,
+            'boundingBox': None,
+            'detectionQuality': 0.0,
+            'bodyCompleteness': {
+                'head': False,
+                'torso': False,
+                'legs': False,
+                'feet': False
+            },
+            'calibrationStatus': 'not_detected',
+            'averageVisibility': 0.0,
             'lighting': 'poor',  # Phase 5
             'estimatedDistance': 'too_far',  # Phase 5
+            'velocity': None,
         }
 

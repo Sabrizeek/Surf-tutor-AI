@@ -9,14 +9,19 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { progressAPI, gamificationAPI } from '../services/api';
 import { getBadgeById, getBadgesByCategory, BadgeCategory } from '../utils/badges';
+import { formatProgress } from '../utils/progressFormatter';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
+const WORKOUT_PROGRESS_KEY = '@workout_progress';
 
 export default function ProgressScreen() {
   const [progress, setProgress] = useState<any>(null);
   const [gamification, setGamification] = useState<any>(null);
+  const [cardioWorkouts, setCardioWorkouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<BadgeCategory>('poseEstimation');
@@ -24,6 +29,19 @@ export default function ProgressScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const loadCardioWorkouts = async () => {
+    try {
+      const data = await AsyncStorage.getItem(WORKOUT_PROGRESS_KEY);
+      if (data) {
+        const workouts = JSON.parse(data);
+        setCardioWorkouts(workouts || []);
+      }
+    } catch (error) {
+      console.error('Error loading cardio workouts:', error);
+      setCardioWorkouts([]);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -34,6 +52,7 @@ export default function ProgressScreen() {
       ]);
       setProgress(progressData.progress || {});
       setGamification(gamificationData.gamification || {});
+      await loadCardioWorkouts();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -69,10 +88,67 @@ export default function ProgressScreen() {
   const points = gamification.points || 0;
   const streak = gamification.streak || 0;
   
+  // Calculate cardio stats from local workouts
+  const calculateStreak = (workouts: any[]): number => {
+    if (workouts.length === 0) return 0;
+    const sorted = [...workouts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (const workout of sorted) {
+      const workoutDate = new Date(workout.date);
+      workoutDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((currentDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === streak) {
+        streak++;
+        currentDate = new Date(workoutDate);
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else if (diffDays > streak) {
+        break;
+      }
+    }
+    return streak;
+  };
+  
+  const calculateLongestStreak = (workouts: any[]): number => {
+    if (workouts.length === 0) return 0;
+    const sorted = [...workouts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let longestStreak = 1;
+    let currentStreak = 1;
+    
+    for (let i = 1; i < sorted.length; i++) {
+      const prevDate = new Date(sorted[i - 1].date);
+      const currDate = new Date(sorted[i].date);
+      const diffDays = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        currentStreak++;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      } else {
+        currentStreak = 1;
+      }
+    }
+    return longestStreak;
+  };
+
+  const cardioStats = {
+    workoutsCompleted: cardioWorkouts.length,
+    totalMinutes: cardioWorkouts.reduce((sum, w) => sum + (w.durationCompleted || 0), 0),
+    currentStreak: calculateStreak(cardioWorkouts),
+    longestStreak: calculateLongestStreak(cardioWorkouts),
+  };
+
   // Get current category data
   const getCurrentCategoryData = () => {
     switch (activeTab) {
       case 'poseEstimation':
+        const poseFormatted = formatProgress('pose', {
+          totalTime: poseProgress.totalTime || 0,
+          sessions: poseProgress.sessions || 0,
+          scores: poseProgress.scores || {},
+        });
         return {
           title: 'Pose Estimation',
           completed: poseProgress.completedDrills || [],
@@ -80,18 +156,34 @@ export default function ProgressScreen() {
           totalTime: poseProgress.totalTime || 0,
           sessions: poseProgress.sessions || 0,
           badges: poseProgress.badges || [],
+          formatted: poseFormatted,
         };
       case 'cardio':
+        const cardioFormatted = formatProgress('cardio', {
+          totalMinutes: cardioStats.totalMinutes,
+          workoutsCompleted: cardioStats.workoutsCompleted,
+          averageCompletionRate: cardioWorkouts.length > 0
+            ? cardioWorkouts.reduce((sum, w) => sum + (w.completionRate || 0), 0) / cardioWorkouts.length
+            : 0,
+        });
         return {
           title: 'Cardio',
-          completed: cardioProgress.completedWorkouts || [],
+          completed: cardioWorkouts.map((w, i) => ({ id: i, name: w.planName })),
           scores: {},
-          totalTime: cardioProgress.totalTime || 0,
-          sessions: cardioProgress.sessions || 0,
-          calories: cardioProgress.calories || 0,
-          badges: cardioProgress.badges || [],
+          totalTime: cardioStats.totalMinutes * 60, // Convert to seconds
+          sessions: cardioStats.workoutsCompleted,
+          calories: 0,
+          badges: [],
+          streak: cardioStats.currentStreak,
+          longestStreak: cardioStats.longestStreak,
+          formatted: cardioFormatted,
         };
       case 'ar':
+        const arFormatted = formatProgress('ar', {
+          totalTime: arProgress.totalTime || 0,
+          sessions: arProgress.sessions || 0,
+          spatialAccuracy: arProgress.spatialAccuracy || 0,
+        });
         return {
           title: 'AR',
           completed: arProgress.completedModules || [],
@@ -99,6 +191,7 @@ export default function ProgressScreen() {
           totalTime: arProgress.totalTime || 0,
           sessions: arProgress.sessions || 0,
           badges: arProgress.badges || [],
+          formatted: arFormatted,
         };
     }
   };
@@ -160,35 +253,100 @@ export default function ProgressScreen() {
             </Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{formatTime(currentData.totalTime)}</Text>
-            <Text style={styles.statLabel}>Total Time</Text>
+            <Text style={styles.statValue}>
+              {currentData.formatted ? currentData.formatted.time.split(' ')[0] : formatTime(currentData.totalTime).split(' ')[0]}
+            </Text>
+            <Text style={styles.statLabel}>Total Time (min)</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{currentData.sessions}</Text>
+            <Text style={styles.statValue}>
+              {currentData.formatted ? currentData.formatted.sessions.split(' ')[0] : currentData.sessions}
+            </Text>
             <Text style={styles.statLabel}>Sessions</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{currentData.badges.length}</Text>
-            <Text style={styles.statLabel}>Badges</Text>
-          </View>
-          {activeTab === 'cardio' && currentData.calories > 0 && (
+          {currentData.formatted?.completion && (
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>{currentData.calories}</Text>
-              <Text style={styles.statLabel}>Calories</Text>
+              <Text style={styles.statValue}>{currentData.formatted.completion}</Text>
+              <Text style={styles.statLabel}>Completion</Text>
             </View>
+          )}
+          {currentData.formatted?.accuracy && (
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{currentData.formatted.accuracy}</Text>
+              <Text style={styles.statLabel}>Accuracy</Text>
+            </View>
+          )}
+          {activeTab === 'cardio' && currentData.streak !== undefined && (
+            <>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{currentData.streak}</Text>
+                <Text style={styles.statLabel}>Day Streak</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{currentData.longestStreak || 0}</Text>
+                <Text style={styles.statLabel}>Longest Streak</Text>
+              </View>
+            </>
           )}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             {activeTab === 'poseEstimation' ? 'Completed Drills' : 
-             activeTab === 'cardio' ? 'Completed Workouts' : 
+             activeTab === 'cardio' ? 'Recent Workouts' : 
              'Completed Modules'}
           </Text>
-          {currentData.completed.length > 0 ? (
-            currentData.completed.map((item: string, index: number) => (
+          {activeTab === 'cardio' && cardioWorkouts.length > 0 ? (
+            cardioWorkouts.slice(0, 10).map((workout, index) => {
+              const activities = workout.activities || [];
+              const completedActivities = activities.filter((a: any) => a.status === 'completed');
+              const skippedActivities = activities.filter((a: any) => a.status === 'skipped');
+              
+              return (
+                <View key={index} style={styles.item}>
+                  <Text style={styles.itemText}>
+                    {new Date(workout.date).toLocaleDateString()} - {workout.planName}
+                  </Text>
+                  <Text style={[styles.itemText, { fontSize: 12, color: '#666', marginTop: 4 }]}>
+                    {workout.durationCompleted || workout.totalDurationActual || 0} min • 
+                    {completedActivities.length} completed • 
+                    {skippedActivities.length} skipped • 
+                    {workout.completionRate || 0}% complete
+                  </Text>
+                  
+                  {/* Individual Activity Details */}
+                  {activities && activities.length > 0 && (
+                    <View style={styles.activityDetailsContainer}>
+                      <Text style={styles.activityDetailsTitle}>Activities:</Text>
+                      {activities.slice(0, 5).map((activity: any, actIndex: number) => (
+                        <View key={actIndex} style={styles.activityDetailItem}>
+                          <Icon 
+                            name={activity.status === 'completed' ? 'check-circle' : activity.status === 'skipped' ? 'cancel' : 'radio-button-unchecked'} 
+                            size={16} 
+                            color={activity.status === 'completed' ? '#4CAF50' : activity.status === 'skipped' ? '#FF3B30' : '#ccc'} 
+                          />
+                          <Text style={styles.activityDetailText}>
+                            {activity.name} 
+                            {activity.status === 'completed' && activity.durationActual && 
+                              ` (${activity.durationActual}s)`}
+                            {activity.status === 'skipped' && ' (skipped)'}
+                          </Text>
+                        </View>
+                      ))}
+                      {activities.length > 5 && (
+                        <Text style={styles.activityDetailText}>
+                          ... and {activities.length - 5} more activities
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          ) : currentData.completed.length > 0 ? (
+            currentData.completed.map((item: any, index: number) => (
               <View key={index} style={styles.item}>
-                <Text style={styles.itemText}>✓ {item}</Text>
+                <Text style={styles.itemText}>✓ {typeof item === 'string' ? item : item.name}</Text>
               </View>
             ))
           ) : (
@@ -369,6 +527,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  activityDetailsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  activityDetailsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  activityDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  activityDetailText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
   },
 });
 
