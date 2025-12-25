@@ -1,5 +1,20 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { cardioProfileStorage, CardioProfile } from '../utils/cardioProfile';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PROFILE_KEY = '@cardio_profile';
+
+// ✅ UPDATED: Added equipment field
+export interface CardioProfile {
+  fitnessLevel: string;
+  goal: string;
+  trainingDuration: string;
+  height?: number;
+  weight?: number;
+  equipment?: string; // ✅ NEW: Equipment field
+  limitations?: string[];
+  completed?: boolean;
+  completedAt?: string;
+}
 
 interface CardioProfileContextType {
   profile: CardioProfile | null;
@@ -8,10 +23,53 @@ interface CardioProfileContextType {
   saveProfile: (profile: CardioProfile) => Promise<void>;
   clearProfile: () => Promise<void>;
   isQuizCompleted: boolean;
-  refreshProfile: () => Promise<void>; // Alias for loadProfile
+  refreshProfile: () => Promise<void>;
 }
 
 const CardioProfileContext = createContext<CardioProfileContextType | undefined>(undefined);
+
+// ✅ UPDATED: Storage utilities with equipment support
+export const cardioProfileStorage = {
+  async load(): Promise<CardioProfile | null> {
+    try {
+      const data = await AsyncStorage.getItem(PROFILE_KEY);
+      if (data) {
+        const profile = JSON.parse(data);
+        // Ensure equipment field exists (for backward compatibility)
+        if (!profile.equipment) {
+          profile.equipment = 'None';
+        }
+        return profile;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error loading cardio profile:', error);
+      return null;
+    }
+  },
+
+  async save(profile: CardioProfile): Promise<void> {
+    try {
+      // Ensure equipment field is set
+      if (!profile.equipment) {
+        profile.equipment = 'None';
+      }
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    } catch (error) {
+      console.error('Error saving cardio profile:', error);
+      throw error;
+    }
+  },
+
+  async clear(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(PROFILE_KEY);
+    } catch (error) {
+      console.error('Error clearing cardio profile:', error);
+      throw error;
+    }
+  },
+};
 
 export function CardioProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<CardioProfile | null>(null);
@@ -61,7 +119,7 @@ export function CardioProfileProvider({ children }: { children: ReactNode }) {
         loadProfile,
         saveProfile,
         clearProfile,
-        refreshProfile: loadProfile, // Alias for loadProfile
+        refreshProfile: loadProfile,
         isQuizCompleted: profile?.completed === true,
       }}
     >
@@ -79,4 +137,3 @@ export function useCardioProfile() {
 }
 
 export default CardioProfileContext;
-

@@ -1,216 +1,424 @@
 /**
- * Badge Awarding Logic
- * Checks progress and awards badges accordingly
+ * ENHANCED Badge Awarding Logic
+ * Smart badge checking with progress tracking and notifications
  */
 
-import { Badge, BadgeCategory, POSE_ESTIMATION_BADGES, CARDIO_BADGES, AR_BADGES } from './badges';
+import { Badge, BadgeCategory, getBadgeById, ALL_BADGES } from './badges';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export interface PoseProgress {
+const BADGE_PROGRESS_KEY = '@badge_progress';
+
+export interface BadgeProgress {
+  [badgeId: string]: {
+    currentValue: number;
+    lastUpdated: string;
+    percentComplete: number;
+  };
+}
+
+export interface CardioStats {
+  totalWorkouts: number;
+  totalMinutes: number;
+  totalCalories: number;
+  currentStreak: number;
+  longestStreak: number;
+  hiitWorkouts: number;
+  completionRates: number[];
+  longestSingleWorkout: number;
+}
+
+export interface PoseStats {
   completedDrills: string[];
   scores: { [drillId: string]: number[] };
-  totalTime: number; // seconds
+  totalTime: number;
   sessions: number;
-  badges: string[];
-  lastPracticeDate?: number;
   consecutiveDays?: number;
 }
 
-export interface CardioProgress {
-  completedWorkouts: string[];
-  totalTime: number; // seconds
-  calories: number;
-  sessions: number;
-  badges: string[];
-}
-
-export interface ARProgress {
+export interface ARStats {
   completedModules: string[];
-  totalTime: number; // seconds
+  totalTime: number;
   sessions: number;
-  badges: string[];
 }
 
-/**
- * Check and award pose estimation badges
- * Phase 4.2: Enhanced with performance-based triggers
- */
-export function checkPoseBadges(
-  progress: PoseProgress,
-  currentSession?: {
-    stabilityScore?: number;
-    duration?: number;
-    drillId?: string;
-    popupVelocity?: number;
-    perfectAnglesDuration?: number;
-    consecutiveHighScores?: number;
-  }
-): string[] {
-  const newBadges: string[] = [];
-  const existingBadges = new Set(progress.badges || []);
+// ============================================================================
+// BADGE PROGRESS TRACKING
+// ============================================================================
 
-  // pose_novice: Complete first drill
-  if (progress.completedDrills.length >= 1 && !existingBadges.has('pose_novice')) {
+export async function getBadgeProgress(): Promise<BadgeProgress> {
+  try {
+    const data = await AsyncStorage.getItem(BADGE_PROGRESS_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch (error) {
+    console.error('Error loading badge progress:', error);
+    return {};
+  }
+}
+
+export async function updateBadgeProgress(
+  badgeId: string,
+  currentValue: number,
+  requirement: number
+): Promise<void> {
+  try {
+    const progress = await getBadgeProgress();
+    progress[badgeId] = {
+      currentValue,
+      lastUpdated: new Date().toISOString(),
+      percentComplete: Math.min(100, (currentValue / requirement) * 100),
+    };
+    await AsyncStorage.setItem(BADGE_PROGRESS_KEY, JSON.stringify(progress));
+  } catch (error) {
+    console.error('Error updating badge progress:', error);
+  }
+}
+
+// ============================================================================
+// CARDIO BADGE CHECKING (ENHANCED)
+// ============================================================================
+
+export function checkCardioBadges(
+  stats: CardioStats,
+  earnedBadges: string[]
+): { newBadges: string[]; progress: BadgeProgress } {
+  const newBadges: string[] = [];
+  const progress: BadgeProgress = {};
+  const earnedSet = new Set(earnedBadges);
+
+  // Workout count badges
+  const workoutBadges = [
+    { id: 'cardio_first_step', requirement: 1 },
+    { id: 'cardio_early_bird', requirement: 3 },
+    { id: 'cardio_warrior', requirement: 10 },
+    { id: 'cardio_champion', requirement: 25 },
+    { id: 'cardio_legend', requirement: 50 },
+    { id: 'cardio_immortal', requirement: 100 },
+  ];
+
+  workoutBadges.forEach(({ id, requirement }) => {
+    if (stats.totalWorkouts >= requirement && !earnedSet.has(id)) {
+      newBadges.push(id);
+    }
+    progress[id] = {
+      currentValue: stats.totalWorkouts,
+      lastUpdated: new Date().toISOString(),
+      percentComplete: Math.min(100, (stats.totalWorkouts / requirement) * 100),
+    };
+  });
+
+  // Time-based badges
+  const timeBadges = [
+    { id: 'cardio_30_min_club', requirement: 30 },
+    { id: 'cardio_hour_master', requirement: 60 },
+    { id: 'cardio_3_hour_club', requirement: 180 },
+    { id: 'cardio_marathon', requirement: 300 },
+    { id: 'cardio_ultra_marathon', requirement: 600 },
+  ];
+
+  timeBadges.forEach(({ id, requirement }) => {
+    if (stats.totalMinutes >= requirement && !earnedSet.has(id)) {
+      newBadges.push(id);
+    }
+    progress[id] = {
+      currentValue: stats.totalMinutes,
+      lastUpdated: new Date().toISOString(),
+      percentComplete: Math.min(100, (stats.totalMinutes / requirement) * 100),
+    };
+  });
+
+  // Streak badges
+  const streakBadges = [
+    { id: 'cardio_3_day_streak', requirement: 3 },
+    { id: 'cardio_week_warrior', requirement: 7 },
+    { id: 'cardio_consistency_king', requirement: 14 },
+    { id: 'cardio_30_day_challenge', requirement: 30 },
+    { id: 'cardio_unstoppable', requirement: 60 },
+  ];
+
+  streakBadges.forEach(({ id, requirement }) => {
+    if (stats.currentStreak >= requirement && !earnedSet.has(id)) {
+      newBadges.push(id);
+    }
+    progress[id] = {
+      currentValue: stats.currentStreak,
+      lastUpdated: new Date().toISOString(),
+      percentComplete: Math.min(100, (stats.currentStreak / requirement) * 100),
+    };
+  });
+
+  // Calorie badges
+  const calorieBadges = [
+    { id: 'cardio_calorie_crusher', requirement: 500 },
+    { id: 'cardio_calorie_inferno', requirement: 2000 },
+  ];
+
+  calorieBadges.forEach(({ id, requirement }) => {
+    if (stats.totalCalories >= requirement && !earnedSet.has(id)) {
+      newBadges.push(id);
+    }
+    progress[id] = {
+      currentValue: stats.totalCalories,
+      lastUpdated: new Date().toISOString(),
+      percentComplete: Math.min(100, (stats.totalCalories / requirement) * 100),
+    };
+  });
+
+  // Special badges
+  if (
+    stats.completionRates.some(rate => rate === 100) &&
+    !earnedSet.has('cardio_perfectionist')
+  ) {
+    newBadges.push('cardio_perfectionist');
+  }
+  progress['cardio_perfectionist'] = {
+    currentValue: Math.max(...stats.completionRates, 0),
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.max(...stats.completionRates, 0),
+  };
+
+  if (stats.hiitWorkouts >= 5 && !earnedSet.has('cardio_speed_demon')) {
+    newBadges.push('cardio_speed_demon');
+  }
+  progress['cardio_speed_demon'] = {
+    currentValue: stats.hiitWorkouts,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (stats.hiitWorkouts / 5) * 100),
+  };
+
+  if (stats.longestSingleWorkout >= 30 && !earnedSet.has('cardio_endurance_beast')) {
+    newBadges.push('cardio_endurance_beast');
+  }
+  progress['cardio_endurance_beast'] = {
+    currentValue: stats.longestSingleWorkout,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (stats.longestSingleWorkout / 30) * 100),
+  };
+
+  return { newBadges, progress };
+}
+
+// ============================================================================
+// POSE BADGE CHECKING (ENHANCED)
+// ============================================================================
+
+export function checkPoseBadges(
+  stats: PoseStats,
+  earnedBadges: string[]
+): { newBadges: string[]; progress: BadgeProgress } {
+  const newBadges: string[] = [];
+  const progress: BadgeProgress = {};
+  const earnedSet = new Set(earnedBadges);
+
+  // Novice badge
+  if (stats.completedDrills.length >= 1 && !earnedSet.has('pose_novice')) {
     newBadges.push('pose_novice');
   }
+  progress['pose_novice'] = {
+    currentValue: stats.completedDrills.length,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (stats.completedDrills.length / 1) * 100),
+  };
 
-  // pose_warrior: Complete all 8 drills
-  if (progress.completedDrills.length >= 8 && !existingBadges.has('pose_warrior')) {
+  // Warrior badge
+  if (stats.completedDrills.length >= 8 && !earnedSet.has('pose_warrior')) {
     newBadges.push('pose_warrior');
   }
+  progress['pose_warrior'] = {
+    currentValue: stats.completedDrills.length,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (stats.completedDrills.length / 8) * 100),
+  };
 
-  // pose_perfectionist: Score 90+ on any drill
-  const hasHighScore = Object.values(progress.scores || {}).some(
-    scores => scores.some(score => score >= 90)
+  // High score badges
+  const hasHighScore = Object.values(stats.scores || {}).some(scores =>
+    scores.some(score => score >= 90)
   );
-  if (hasHighScore && !existingBadges.has('pose_perfectionist')) {
+  if (hasHighScore && !earnedSet.has('pose_perfectionist')) {
     newBadges.push('pose_perfectionist');
   }
 
-  // pose_master: Score 90+ on all drills
-  const allDrillsHaveHighScore = Object.values(progress.scores || {}).every(
-    scores => scores.some(score => score >= 90)
-  ) && Object.keys(progress.scores || {}).length >= 8;
-  if (allDrillsHaveHighScore && !existingBadges.has('pose_master')) {
+  const allDrillsHaveHighScore =
+    Object.values(stats.scores || {}).every(scores => scores.some(score => score >= 90)) &&
+    Object.keys(stats.scores || {}).length >= 8;
+  if (allDrillsHaveHighScore && !earnedSet.has('pose_master')) {
     newBadges.push('pose_master');
   }
 
-  // pose_marathon: Practice for 1 hour total (3600 seconds)
-  if (progress.totalTime >= 3600 && !existingBadges.has('pose_marathon')) {
+  // Time badge
+  const totalMinutes = Math.floor(stats.totalTime / 60);
+  if (totalMinutes >= 60 && !earnedSet.has('pose_marathon')) {
     newBadges.push('pose_marathon');
   }
+  progress['pose_marathon'] = {
+    currentValue: totalMinutes,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (totalMinutes / 60) * 100),
+  };
 
-  // pose_consistent: Practice 7 days in a row
-  if (progress.consecutiveDays && progress.consecutiveDays >= 7 && !existingBadges.has('pose_consistent')) {
+  // Consistency badge
+  if (stats.consecutiveDays && stats.consecutiveDays >= 7 && !earnedSet.has('pose_consistent')) {
     newBadges.push('pose_consistent');
   }
+  progress['pose_consistent'] = {
+    currentValue: stats.consecutiveDays || 0,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, ((stats.consecutiveDays || 0) / 7) * 100),
+  };
 
-  // Phase 4.2: Performance-based badges
-  // steady_rail: Maintain >0.9 stability for 30 seconds
-  if (
-    currentSession &&
-    currentSession.stabilityScore !== undefined &&
-    currentSession.duration !== undefined &&
-    currentSession.stabilityScore > 0.9 &&
-    currentSession.duration >= 30 &&
-    !existingBadges.has('steady_rail')
-  ) {
-    newBadges.push('steady_rail');
-  }
-
-  // popup_king: Pop-up speed in top 10% (velocity > threshold)
-  const POPUP_VELOCITY_THRESHOLD = 0.5; // Normalized units per second
-  if (
-    currentSession &&
-    currentSession.drillId === 'popup' &&
-    currentSession.popupVelocity !== undefined &&
-    currentSession.popupVelocity > POPUP_VELOCITY_THRESHOLD &&
-    !existingBadges.has('popup_king')
-  ) {
-    newBadges.push('popup_king');
-  }
-
-  // angle_master: Maintain perfect angles for 60 seconds
-  if (
-    currentSession &&
-    currentSession.perfectAnglesDuration !== undefined &&
-    currentSession.perfectAnglesDuration >= 60 &&
-    !existingBadges.has('angle_master')
-  ) {
-    newBadges.push('angle_master');
-  }
-
-  // form_perfectionist: Score 95%+ on 10 consecutive drills
-  if (
-    currentSession &&
-    currentSession.consecutiveHighScores !== undefined &&
-    currentSession.consecutiveHighScores >= 10 &&
-    !existingBadges.has('form_perfectionist')
-  ) {
-    newBadges.push('form_perfectionist');
-  }
-
-  // marathon_surfer: Complete 100 drills total
-  const totalDrillCompletions = Object.values(progress.scores || {}).reduce(
-    (sum, scores) => sum + scores.length,
-    0
-  );
-  if (totalDrillCompletions >= 100 && !existingBadges.has('marathon_surfer')) {
-    newBadges.push('marathon_surfer');
-  }
-
-  // Drill-specific expert badges: Score 95+ on specific drill 10 times
-  const drillIds = ['stance', 'popup', 'paddling', 'bottom_turn', 'pumping', 'tube_stance', 'falling', 'cutback'];
-  drillIds.forEach(drillId => {
-    const badgeId = `${drillId}_expert`;
-    const scores = progress.scores[drillId] || [];
-    const highScores = scores.filter(score => score >= 95);
-    if (highScores.length >= 10 && !existingBadges.has(badgeId)) {
-      newBadges.push(badgeId);
-    }
-  });
-
-  return newBadges;
+  return { newBadges, progress };
 }
 
-/**
- * Check and award cardio badges
- */
-export function checkCardioBadges(progress: CardioProgress): string[] {
+// ============================================================================
+// AR BADGE CHECKING
+// ============================================================================
+
+export function checkARBadges(
+  stats: ARStats,
+  earnedBadges: string[]
+): { newBadges: string[]; progress: BadgeProgress } {
   const newBadges: string[] = [];
-  const existingBadges = new Set(progress.badges || []);
+  const progress: BadgeProgress = {};
+  const earnedSet = new Set(earnedBadges);
 
-  // cardio_starter: Complete first workout
-  if (progress.completedWorkouts.length >= 1 && !existingBadges.has('cardio_starter')) {
-    newBadges.push('cardio_starter');
-  }
-
-  // cardio_burner: Burn 500 calories
-  if (progress.calories >= 500 && !existingBadges.has('cardio_burner')) {
-    newBadges.push('cardio_burner');
-  }
-
-  // cardio_warrior: Complete 10 workouts
-  if (progress.completedWorkouts.length >= 10 && !existingBadges.has('cardio_warrior')) {
-    newBadges.push('cardio_warrior');
-  }
-
-  // cardio_marathon: 5 hours total cardio time (18000 seconds)
-  if (progress.totalTime >= 18000 && !existingBadges.has('cardio_marathon')) {
-    newBadges.push('cardio_marathon');
-  }
-
-  return newBadges;
-}
-
-/**
- * Check and award AR badges
- */
-export function checkARBadges(progress: ARProgress): string[] {
-  const newBadges: string[] = [];
-  const existingBadges = new Set(progress.badges || []);
-
-  // ar_explorer: Complete first AR module
-  if (progress.completedModules.length >= 1 && !existingBadges.has('ar_explorer')) {
+  if (stats.completedModules.length >= 1 && !earnedSet.has('ar_explorer')) {
     newBadges.push('ar_explorer');
   }
+  progress['ar_explorer'] = {
+    currentValue: stats.completedModules.length,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (stats.completedModules.length / 1) * 100),
+  };
 
-  // ar_master: Complete all AR modules (assuming 5 modules)
-  if (progress.completedModules.length >= 5 && !existingBadges.has('ar_master')) {
+  if (stats.completedModules.length >= 5 && !earnedSet.has('ar_master')) {
     newBadges.push('ar_master');
   }
+  progress['ar_master'] = {
+    currentValue: stats.completedModules.length,
+    lastUpdated: new Date().toISOString(),
+    percentComplete: Math.min(100, (stats.completedModules.length / 5) * 100),
+  };
 
-  return newBadges;
+  return { newBadges, progress };
 }
 
-/**
- * Award badge via API
- */
-export async function awardBadge(category: BadgeCategory, badgeId: string): Promise<void> {
-  try {
-    const { gamificationAPI } = require('../services/api');
-    await gamificationAPI.awardPoints(0, badgeId);
-  } catch (error) {
-    console.error(`[Badge] Error awarding badge ${badgeId}:`, error);
+// ============================================================================
+// BADGE NOTIFICATION
+// ============================================================================
+
+export interface BadgeNotification {
+  badge: Badge;
+  isNew: boolean;
+  progress: number;
+}
+
+export function createBadgeNotification(
+  badgeId: string,
+  isNew: boolean,
+  progress: number
+): BadgeNotification | null {
+  const badge = getBadgeById(badgeId);
+  if (!badge) return null;
+
+  return {
+    badge,
+    isNew,
+    progress,
+  };
+}
+
+// ============================================================================
+// HELPER: Calculate Cardio Stats from Workout History
+// ============================================================================
+
+export function calculateCardioStats(workouts: any[]): CardioStats {
+  const totalWorkouts = workouts.length;
+  const totalMinutes = workouts.reduce((sum, w) => sum + (w.totalDurationActual || 0), 0);
+  
+  // Estimate calories (rough: 10 cal/min for cardio)
+  const totalCalories = Math.floor(totalMinutes * 10);
+
+  // Calculate current streak
+  const currentStreak = calculateCurrentStreak(workouts);
+  const longestStreak = calculateLongestStreak(workouts);
+
+  // Count HIIT workouts (workouts with "HIIT", "Sprint", "Interval" in name)
+  const hiitWorkouts = workouts.filter(w => 
+    (w.planName || '').toLowerCase().includes('hiit') ||
+    (w.planName || '').toLowerCase().includes('sprint') ||
+    (w.planName || '').toLowerCase().includes('interval')
+  ).length;
+
+  // Completion rates
+  const completionRates = workouts.map(w => w.completionRate || 0);
+
+  // Longest single workout
+  const longestSingleWorkout = Math.max(...workouts.map(w => w.totalDurationActual || 0), 0);
+
+  return {
+    totalWorkouts,
+    totalMinutes,
+    totalCalories,
+    currentStreak,
+    longestStreak,
+    hiitWorkouts,
+    completionRates,
+    longestSingleWorkout,
+  };
+}
+
+function calculateCurrentStreak(workouts: any[]): number {
+  if (workouts.length === 0) return 0;
+
+  const sorted = [...workouts].sort((a, b) => 
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  let streak = 0;
+  let currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+
+  for (const workout of sorted) {
+    const workoutDate = new Date(workout.date);
+    workoutDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((currentDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === streak) {
+      streak++;
+      currentDate = new Date(workoutDate);
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else if (diffDays > streak) {
+      break;
+    }
   }
+
+  return streak;
 }
 
+function calculateLongestStreak(workouts: any[]): number {
+  if (workouts.length === 0) return 0;
+
+  const sorted = [...workouts].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  let longestStreak = 1;
+  let currentStreak = 1;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prevDate = new Date(sorted[i - 1].date);
+    const currDate = new Date(sorted[i].date);
+    prevDate.setHours(0, 0, 0, 0);
+    currDate.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      currentStreak++;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+  }
+
+  return longestStreak;
+}

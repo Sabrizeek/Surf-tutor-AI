@@ -1,23 +1,12 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Configure base URL - adjust for your environment
-// For Android emulator, use 10.0.2.2 instead of localhost
-// For iOS simulator, use localhost
-// For physical device, use your computer's IP address
 import { Platform } from 'react-native';
 
 const getBaseURL = () => {
   // @ts-ignore - __DEV__ is a global variable in React Native
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
-    // For physical devices, use your computer's IP address
-    // For Android emulator, use 10.0.2.2
-    // For iOS simulator, use localhost
     if (Platform.OS === 'android') {
-      // Check if running on emulator or physical device
-      // Physical device: use computer's current IP (192.168.8.100)
-      // Emulator: use 10.0.2.2
-      return 'http://192.168.8.100:3000'; // Updated IP address
+      return 'http://192.168.8.100:3000'; // Your IP address
     }
     return 'http://localhost:3000'; // iOS simulator
   }
@@ -31,12 +20,13 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 20000, // 20 seconds timeout for pose detection (increased for complex model)
+  timeout: 20000,
 });
 
-// No auth interceptors needed - authentication removed
+// ============================================================================
+// CARDIO PLANS API - UPDATED TO USE ALL QUIZ DATA
+// ============================================================================
 
-// Cardio Plans API
 export const cardioAPI = {
   getRecommendations: async (
     skillLevel: string,
@@ -49,6 +39,7 @@ export const cardioAPI = {
     },
     durationRange?: string,
     limitations?: string[],
+    equipment?: string, // ADD THIS PARAMETER
     adaptiveAdjustments?: {
       intensityAdjustment?: number;
       restMultiplierAdjustment?: number;
@@ -58,22 +49,27 @@ export const cardioAPI = {
   ) => {
     // Ensure goal is sent as array
     const goalArray = Array.isArray(goal) ? goal : [goal];
+    
     const response = await api.post('/api/recommend', {
       skillLevel,
       goal: goalArray,
       userDetails,
-      durationRange,
-      limitations,
+      durationRange, // ✅ Now sent to backend
+      limitations,   // ✅ Now sent to backend
+      equipment: equipment || 'None', // ✅ NEW: Send equipment
       adaptiveAdjustments,
     });
+    
     return response.data;
   },
 };
 
-// Progress API
+// ============================================================================
+// OTHER APIs (unchanged)
+// ============================================================================
+
 export const progressAPI = {
   saveProgress: async (category?: string, data?: any, completedDrills?: string[], scores?: Record<string, number>, badges?: string[]) => {
-    // Support both new categorized format and legacy format
     const body = category && data
       ? { category, data }
       : { completedDrills, scores, badges };
@@ -88,7 +84,6 @@ export const progressAPI = {
   },
 };
 
-// Gamification API
 export const gamificationAPI = {
   awardPoints: async (points: number, badge?: string, streak?: number) => {
     const response = await api.post('/api/gamification/award', {
@@ -105,7 +100,6 @@ export const gamificationAPI = {
   },
 };
 
-// Session API - Phase 4.3: Session Replay
 export const sessionAPI = {
   saveSession: async (sessionData: {
     drillId: string;
@@ -145,17 +139,15 @@ export const sessionAPI = {
   },
 };
 
-// Pose Detection API
 export const poseAPI = {
   detectPose: async (imageBase64: string, drillId?: string, sessionId?: string) => {
     const response = await api.post('/api/pose/detect', {
       image: imageBase64,
       drillId,
-      sessionId, // For velocity tracking (Phase 5)
+      sessionId,
     });
     return response.data;
   },
 };
 
 export default api;
-

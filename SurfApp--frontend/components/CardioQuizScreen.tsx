@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,21 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeLinearGradient from './SafeLinearGradient';
 import { useCardioProfile, CardioProfile } from '../context/CardioProfileContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
+const { width } = Dimensions.get('window');
 
 interface QuizStep {
   id: number;
   title: string;
   question: string;
+  icon: string;
 }
 
 export default function CardioQuizScreen({ onComplete }: { onComplete: () => void }) {
@@ -27,10 +33,69 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [limitations, setLimitations] = useState<string[]>([]);
+  const [equipment, setEquipment] = useState('');
 
-  const fitnessLevels = ['Beginner', 'Intermediate', 'Pro'];
-  const goals = ['Warm up only', 'Improve endurance', 'Improve explosive pop-up speed'];
-  const durations = ['5-10 minutes', '10-20 minutes', '20+ minutes'];
+  // ✅ Animations
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  const steps: QuizStep[] = [
+    { id: 0, title: 'Fitness Level', question: 'What is your current fitness level?', icon: 'trending-up' },
+    { id: 1, title: 'Goal', question: 'What is your main goal before surfing?', icon: 'flag' },
+    { id: 2, title: 'Duration', question: 'How long can you train before surfing?', icon: 'schedule' },
+    { id: 3, title: 'Body Info', question: 'Enter your body measurements', icon: 'person' },
+    { id: 4, title: 'Equipment', question: 'What equipment do you have?', icon: 'fitness-center' },
+    { id: 5, title: 'Limitations', question: 'Any physical limitations?', icon: 'health-and-safety' },
+  ];
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animate progress bar
+    Animated.timing(progressAnim, {
+      toValue: (currentStep + 1) / steps.length,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+  }, [currentStep]);
+
+  const fitnessLevels = [
+    { value: 'Beginner', icon: 'star-outline', color: '#4CAF50', description: 'New to fitness' },
+    { value: 'Intermediate', icon: 'star-half', color: '#FF9800', description: 'Some experience' },
+    { value: 'Pro', icon: 'star', color: '#F44336', description: 'Very experienced' },
+  ];
+
+  const goals = [
+    { value: 'Warm up only', icon: 'wb-sunny', description: 'Light preparation' },
+    { value: 'Improve endurance', icon: 'directions-run', description: 'Build stamina' },
+    { value: 'Improve explosive pop-up speed', icon: 'flash-on', description: 'Power & speed' },
+  ];
+
+  const durations = [
+    { value: '5-10 minutes', icon: 'timer', description: 'Quick session' },
+    { value: '10-20 minutes', icon: 'timer', description: 'Moderate session' },
+    { value: '20+ minutes', icon: 'timer', description: 'Full session' },
+  ];
+
+  const equipmentOptions = [
+    { value: 'None', icon: 'accessibility', description: 'Bodyweight only' },
+    { value: 'Kettlebell', icon: 'fitness-center', description: 'KB exercises' },
+    { value: 'Gym', icon: 'home', description: 'Full equipment' },
+  ];
+
   const limitationOptions = [
     'None',
     'Knee discomfort',
@@ -61,14 +126,6 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
     'High blood pressure',
   ];
 
-  const steps: QuizStep[] = [
-    { id: 0, title: 'Fitness Level', question: 'What is your current fitness level?' },
-    { id: 1, title: 'Goal', question: 'What is your main goal before surfing?' },
-    { id: 2, title: 'Duration', question: 'How long can you train before surfing?' },
-    { id: 3, title: 'Body Info', question: 'Enter your body measurements' },
-    { id: 4, title: 'Limitations', question: 'Any physical limitations? (Optional)' },
-  ];
-
   const toggleLimitation = (limitation: string) => {
     if (limitation === 'None') {
       setLimitations(['None']);
@@ -82,6 +139,34 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
         }
       });
     }
+  };
+
+  const animateTransition = (direction: 'forward' | 'back') => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: direction === 'forward' ? -width : width,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
   };
 
   const handleNext = () => {
@@ -98,7 +183,6 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
       return;
     }
     if (currentStep === 3) {
-      // Height and weight are optional, but validate if provided
       if (height) {
         const h = parseFloat(height);
         if (isNaN(h) || h < 100 || h > 250) {
@@ -114,10 +198,23 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
         }
       }
     }
+    if (currentStep === 4 && !equipment) {
+      Alert.alert('Required', 'Please select your available equipment');
+      return;
+    }
+
     if (currentStep < steps.length - 1) {
+      animateTransition('forward');
       setCurrentStep(currentStep + 1);
     } else {
       handleSubmit();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      animateTransition('back');
+      setCurrentStep(currentStep - 1);
     }
   };
 
@@ -129,6 +226,7 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
         trainingDuration,
         height: height ? parseFloat(height) : undefined,
         weight: weight ? parseFloat(weight) : undefined,
+        equipment: equipment || 'None',
         limitations: limitations.length > 0 ? limitations : undefined,
         completed: true,
         completedAt: new Date().toISOString(),
@@ -140,12 +238,6 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
@@ -153,15 +245,20 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
           <View style={styles.optionsContainer}>
             {fitnessLevels.map((level) => (
               <TouchableOpacity
-                key={level}
-                style={[styles.optionButton, fitnessLevel === level && styles.optionButtonActive]}
-                onPress={() => setFitnessLevel(level)}
+                key={level.value}
+                style={[
+                  styles.optionCard,
+                  fitnessLevel === level.value && { borderColor: level.color, borderWidth: 3 },
+                ]}
+                onPress={() => setFitnessLevel(level.value)}
               >
-                <Text style={[styles.optionText, fitnessLevel === level && styles.optionTextActive]}>
-                  {level}
-                </Text>
-                {fitnessLevel === level && (
-                  <Icon name="check-circle" size={24} color="#fff" style={styles.checkIcon} />
+                <Icon name={level.icon} size={40} color={level.color} />
+                <Text style={styles.optionTitle}>{level.value}</Text>
+                <Text style={styles.optionDescription}>{level.description}</Text>
+                {fitnessLevel === level.value && (
+                  <View style={[styles.checkBadge, { backgroundColor: level.color }]}>
+                    <Icon name="check" size={20} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
             ))}
@@ -173,15 +270,20 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
           <View style={styles.optionsContainer}>
             {goals.map((g) => (
               <TouchableOpacity
-                key={g}
-                style={[styles.optionButton, goal === g && styles.optionButtonActive]}
-                onPress={() => setGoal(g)}
+                key={g.value}
+                style={[
+                  styles.optionCard,
+                  goal === g.value && styles.optionCardSelected,
+                ]}
+                onPress={() => setGoal(g.value)}
               >
-                <Text style={[styles.optionText, goal === g && styles.optionTextActive]}>
-                  {g}
-                </Text>
-                {goal === g && (
-                  <Icon name="check-circle" size={24} color="#fff" style={styles.checkIcon} />
+                <Icon name={g.icon} size={40} color={goal === g.value ? '#667eea' : '#999'} />
+                <Text style={styles.optionTitle}>{g.value}</Text>
+                <Text style={styles.optionDescription}>{g.description}</Text>
+                {goal === g.value && (
+                  <View style={styles.checkBadge}>
+                    <Icon name="check" size={20} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
             ))}
@@ -193,15 +295,20 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
           <View style={styles.optionsContainer}>
             {durations.map((duration) => (
               <TouchableOpacity
-                key={duration}
-                style={[styles.optionButton, trainingDuration === duration && styles.optionButtonActive]}
-                onPress={() => setTrainingDuration(duration)}
+                key={duration.value}
+                style={[
+                  styles.optionCard,
+                  trainingDuration === duration.value && styles.optionCardSelected,
+                ]}
+                onPress={() => setTrainingDuration(duration.value)}
               >
-                <Text style={[styles.optionText, trainingDuration === duration && styles.optionTextActive]}>
-                  {duration}
-                </Text>
-                {trainingDuration === duration && (
-                  <Icon name="check-circle" size={24} color="#fff" style={styles.checkIcon} />
+                <Icon name={duration.icon} size={40} color={trainingDuration === duration.value ? '#667eea' : '#999'} />
+                <Text style={styles.optionTitle}>{duration.value}</Text>
+                <Text style={styles.optionDescription}>{duration.description}</Text>
+                {trainingDuration === duration.value && (
+                  <View style={styles.checkBadge}>
+                    <Icon name="check" size={20} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
             ))}
@@ -211,27 +318,41 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
       case 3:
         return (
           <View style={styles.inputContainer}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Height (cm)</Text>
-              <TextInput
-                style={styles.input}
-                value={height}
-                onChangeText={setHeight}
-                placeholder="e.g., 175"
-                keyboardType="numeric"
-                maxLength={3}
-              />
+            <View style={styles.inputCard}>
+              <Icon name="height" size={32} color="#667eea" />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Height (cm)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={height}
+                  onChangeText={setHeight}
+                  placeholder="e.g., 175"
+                  keyboardType="numeric"
+                  maxLength={3}
+                />
+              </View>
             </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Weight (kg)</Text>
-              <TextInput
-                style={styles.input}
-                value={weight}
-                onChangeText={setWeight}
-                placeholder="e.g., 70"
-                keyboardType="numeric"
-                maxLength={3}
-              />
+
+            <View style={styles.inputCard}>
+              <Icon name="monitor-weight" size={32} color="#667eea" />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Weight (kg)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={weight}
+                  onChangeText={setWeight}
+                  placeholder="e.g., 70"
+                  keyboardType="numeric"
+                  maxLength={3}
+                />
+              </View>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Icon name="info-outline" size={20} color="#667eea" />
+              <Text style={styles.infoText}>
+                Optional: Height and weight help us calculate your BMI for better recommendations
+              </Text>
             </View>
           </View>
         );
@@ -239,23 +360,56 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
       case 4:
         return (
           <View style={styles.optionsContainer}>
-            {limitationOptions.map((limitation) => {
-              const isSelected = limitations.includes(limitation);
-              return (
-                <TouchableOpacity
-                  key={limitation}
-                  style={[styles.optionButton, isSelected && styles.optionButtonActive]}
-                  onPress={() => toggleLimitation(limitation)}
-                >
-                  <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
-                    {limitation}
-                  </Text>
-                  {isSelected && (
-                    <Icon name="check-circle" size={24} color="#fff" style={styles.checkIcon} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            {equipmentOptions.map((eq) => (
+              <TouchableOpacity
+                key={eq.value}
+                style={[
+                  styles.optionCard,
+                  equipment === eq.value && styles.optionCardSelected,
+                ]}
+                onPress={() => setEquipment(eq.value)}
+              >
+                <Icon name={eq.icon} size={40} color={equipment === eq.value ? '#667eea' : '#999'} />
+                <Text style={styles.optionTitle}>{eq.value}</Text>
+                <Text style={styles.optionDescription}>{eq.description}</Text>
+                {equipment === eq.value && (
+                  <View style={styles.checkBadge}>
+                    <Icon name="check" size={20} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+
+      case 5:
+        return (
+          <View style={styles.limitationsContainer}>
+            <View style={styles.limitationsGrid}>
+              {limitationOptions.map((limitation) => {
+                const isSelected = limitations.includes(limitation);
+                return (
+                  <TouchableOpacity
+                    key={limitation}
+                    style={[
+                      styles.limitationChip,
+                      isSelected && styles.limitationChipSelected,
+                    ]}
+                    onPress={() => toggleLimitation(limitation)}
+                  >
+                    <Text style={[
+                      styles.limitationText,
+                      isSelected && styles.limitationTextSelected,
+                    ]}>
+                      {limitation}
+                    </Text>
+                    {isSelected && (
+                      <Icon name="check-circle" size={18} color="#667eea" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         );
 
@@ -264,50 +418,96 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
     }
   };
 
-  const progress = ((currentStep + 1) / steps.length) * 100;
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Fitness Quiz</Text>
-          <Text style={styles.subtitle}>Help us personalize your cardio plans</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <SafeLinearGradient
+        colors={['#667eea', '#764ba2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <Icon name={steps[currentStep].icon} size={32} color="#fff" />
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Fitness Quiz</Text>
+            <Text style={styles.headerSubtitle}>Personalize your experience</Text>
+          </View>
         </View>
+      </SafeLinearGradient>
 
+      {/* Scrollable Content */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Progress Bar */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            <Animated.View
+              style={[
+                styles.progressFill,
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
+            />
           </View>
           <Text style={styles.progressText}>
             Step {currentStep + 1} of {steps.length}
           </Text>
         </View>
 
+        {/* Question */}
         <View style={styles.questionContainer}>
           <Text style={styles.questionTitle}>{steps[currentStep].title}</Text>
           <Text style={styles.questionText}>{steps[currentStep].question}</Text>
         </View>
 
-        <View style={styles.contentContainer}>{renderStepContent()}</View>
+        {/* Content */}
+        <Animated.View
+          style={[
+            styles.contentContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}
+        >
+          {renderStepContent()}
+        </Animated.View>
+      </ScrollView>
 
-        <View style={styles.buttonContainer}>
-          {currentStep > 0 && (
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Icon name="arrow-back" size={24} color="#007AFF" />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.nextButton, currentStep === 0 && styles.nextButtonFull]}
-            onPress={handleNext}
+      {/* Navigation Buttons - Fixed at bottom */}
+      <View style={styles.navigationContainer}>
+        {currentStep > 0 && (
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Icon name="arrow-back" size={24} color="#667eea" />
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[styles.nextButton, currentStep === 0 && styles.nextButtonFull]}
+          onPress={handleNext}
+        >
+          <SafeLinearGradient
+            colors={['#667eea', '#764ba2']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.nextButtonGradient}
           >
             <Text style={styles.nextButtonText}>
               {currentStep === steps.length - 1 ? 'Complete' : 'Next'}
             </Text>
             <Icon name="arrow-forward" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          </SafeLinearGradient>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -315,50 +515,59 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    padding: 20,
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    marginBottom: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 32,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
+    color: '#fff',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 4,
   },
   progressContainer: {
-    marginBottom: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   progressBar: {
     height: 8,
     backgroundColor: '#e0e0e0',
     borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#667eea',
     borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    fontWeight: '600',
   },
   questionContainer: {
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   questionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#333',
     marginBottom: 8,
   },
@@ -366,98 +575,183 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   contentContainer: {
+    paddingHorizontal: 20,
     minHeight: 200,
-    marginBottom: 32,
   },
   optionsContainer: {
-    gap: 12,
+    gap: 16,
   },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  optionCard: {
     backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
-    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e0e0e0',
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  optionButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+  optionCardSelected: {
+    borderColor: '#667eea',
+    borderWidth: 3,
   },
-  optionText: {
-    fontSize: 16,
+  optionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
-    fontWeight: '500',
+    marginTop: 12,
   },
-  optionTextActive: {
-    color: '#fff',
+  optionDescription: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 4,
   },
-  checkIcon: {
-    marginLeft: 12,
+  checkBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#667eea',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputContainer: {
-    gap: 20,
+    gap: 16,
+  },
+  inputCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   inputGroup: {
-    marginBottom: 16,
+    flex: 1,
+    marginLeft: 16,
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#666',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
     color: '#333',
   },
-  buttonContainer: {
+  infoBox: {
     flexDirection: 'row',
+    backgroundColor: '#E3F2FD',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#1976D2',
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 18,
+  },
+  limitationsContainer: {
+    minHeight: 400,
+  },
+  limitationsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  limitationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  limitationChipSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#667eea',
+  },
+  limitationText: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 6,
+  },
+  limitationTextSelected: {
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  navigationContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 20,
     gap: 12,
-    marginTop: 'auto',
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#667eea',
     flex: 1,
   },
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#667eea',
     marginLeft: 8,
   },
   nextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   nextButtonFull: {
     flex: 1,
   },
+  nextButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
   nextButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#fff',
     marginRight: 8,
   },
 });
-

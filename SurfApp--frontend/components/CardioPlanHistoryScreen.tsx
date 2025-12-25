@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import SafeLinearGradient from './SafeLinearGradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WorkoutExecutionScreen from './WorkoutExecutionScreen';
 
+const { width } = Dimensions.get('window');
 const PLAN_HISTORY_KEY = '@cardio_plan_history';
 
 interface SavedPlan {
@@ -32,16 +36,152 @@ interface SavedPlan {
   };
 }
 
+// ✅ Animated Plan Card Component
+const AnimatedHistoryCard = ({ plan, index, onRepeat, onDelete }: any) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        delay: index * 80,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        delay: index * 80,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  return (
+    <Animated.View
+      style={[
+        styles.planCard,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <View style={styles.planCardHeader}>
+        <View style={styles.planIconContainer}>
+          <SafeLinearGradient
+            colors={['#667eea', '#764ba2']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.planIconGradient}
+          >
+            <Icon name="fitness-center" size={24} color="#fff" />
+          </SafeLinearGradient>
+        </View>
+        
+        <View style={styles.planInfo}>
+          <Text style={styles.planName} numberOfLines={1}>
+            {plan.planName}
+          </Text>
+          <Text style={styles.planDate}>{formatDate(plan.generatedAt)}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.deleteIconButton} onPress={onDelete}>
+          <Icon name="delete-outline" size={22} color="#FF3B30" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.planStats}>
+        <View style={styles.statBox}>
+          <Icon name="schedule" size={18} color="#667eea" />
+          <Text style={styles.statValue}>{plan.durationMinutes}</Text>
+          <Text style={styles.statLabel}>minutes</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statBox}>
+          <Icon name="list" size={18} color="#667eea" />
+          <Text style={styles.statValue}>{plan.exercises.length}</Text>
+          <Text style={styles.statLabel}>exercises</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statBox}>
+          <Icon name="trending-up" size={18} color="#667eea" />
+          <Text style={styles.statValue}>{plan.skillLevel}</Text>
+          <Text style={styles.statLabel}>level</Text>
+        </View>
+      </View>
+
+      {plan.exercises.length > 0 && (
+        <View style={styles.exercisesPreview}>
+          <Text style={styles.exercisesTitle}>Exercises:</Text>
+          {plan.exercises.slice(0, 3).map((exercise, idx) => (
+            <View key={idx} style={styles.exerciseRow}>
+              <View style={styles.exerciseDot} />
+              <Text style={styles.exerciseName} numberOfLines={1}>
+                {exercise}
+              </Text>
+            </View>
+          ))}
+          {plan.exercises.length > 3 && (
+            <Text style={styles.moreExercises}>
+              +{plan.exercises.length - 3} more
+            </Text>
+          )}
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.repeatButton} onPress={onRepeat}>
+        <SafeLinearGradient
+          colors={['#667eea', '#764ba2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.repeatButtonGradient}
+        >
+          <Icon name="replay" size={20} color="#fff" />
+          <Text style={styles.repeatButtonText}>Repeat Workout</Text>
+        </SafeLinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 export default function CardioPlanHistoryScreen() {
   const router = useRouter();
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<SavedPlan | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ✅ Animations
+  const headerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    Animated.spring(headerAnim, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+
     loadPlanHistory();
   }, []);
 
   const loadPlanHistory = async () => {
+    setRefreshing(true);
     try {
       const data = await AsyncStorage.getItem(PLAN_HISTORY_KEY);
       if (data) {
@@ -50,6 +190,8 @@ export default function CardioPlanHistoryScreen() {
       }
     } catch (error) {
       console.error('Error loading plan history:', error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -60,7 +202,7 @@ export default function CardioPlanHistoryScreen() {
   const handleDeletePlan = (planId: string) => {
     Alert.alert(
       'Delete Plan',
-      'Are you sure you want to delete this plan?',
+      'Are you sure you want to delete this plan? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -71,8 +213,36 @@ export default function CardioPlanHistoryScreen() {
               const updated = savedPlans.filter(p => p.id !== planId);
               await AsyncStorage.setItem(PLAN_HISTORY_KEY, JSON.stringify(updated));
               setSavedPlans(updated);
+              
+              // ✅ Animate deletion
+              Alert.alert('Success', 'Plan deleted successfully');
             } catch (error) {
               console.error('Error deleting plan:', error);
+              Alert.alert('Error', 'Failed to delete plan');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearAllPlans = () => {
+    Alert.alert(
+      'Clear All Plans',
+      'Are you sure you want to delete ALL saved plans? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.setItem(PLAN_HISTORY_KEY, JSON.stringify([]));
+              setSavedPlans([]);
+              Alert.alert('Success', 'All plans cleared');
+            } catch (error) {
+              console.error('Error clearing plans:', error);
+              Alert.alert('Error', 'Failed to clear plans');
             }
           },
         },
@@ -97,67 +267,91 @@ export default function CardioPlanHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Cardio Plans</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {savedPlans.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Icon name="fitness-center" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>No plans saved yet</Text>
-            <Text style={styles.emptySubtext}>
-              Generate some cardio plans to see them here
+      {/* ✅ Animated Header */}
+      <Animated.View
+        style={[
+          styles.headerSection,
+          {
+            opacity: headerAnim,
+            transform: [
+              {
+                translateY: headerAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <SafeLinearGradient
+          colors={['#667eea', '#764ba2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Icon name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>My Cardio Plans</Text>
+            <Text style={styles.headerSubtitle}>
+              {savedPlans.length} {savedPlans.length === 1 ? 'plan' : 'plans'} saved
             </Text>
           </View>
+
+          {savedPlans.length > 0 && (
+            <TouchableOpacity onPress={handleClearAllPlans} style={styles.clearAllButton}>
+              <Icon name="delete-sweep" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </SafeLinearGradient>
+      </Animated.View>
+
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {savedPlans.length === 0 ? (
+          <View style={styles.emptyState}>
+            <SafeLinearGradient
+              colors={['rgba(102, 126, 234, 0.1)', 'rgba(118, 75, 162, 0.1)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.emptyStateGradient}
+            >
+              <Icon name="history" size={80} color="#ccc" />
+              <Text style={styles.emptyStateTitle}>No Plans Yet</Text>
+              <Text style={styles.emptyStateText}>
+                Your saved workout plans will appear here
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyStateButton}
+                onPress={() => router.back()}
+              >
+                <SafeLinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.emptyStateButtonGradient}
+                >
+                  <Icon name="add-circle-outline" size={20} color="#fff" />
+                  <Text style={styles.emptyStateButtonText}>Create Your First Plan</Text>
+                </SafeLinearGradient>
+              </TouchableOpacity>
+            </SafeLinearGradient>
+          </View>
         ) : (
-          savedPlans.map((plan) => (
-            <View key={plan.id} style={styles.planCard}>
-              <View style={styles.planHeader}>
-                <View style={styles.planHeaderLeft}>
-                  <Text style={styles.planName}>{plan.planName}</Text>
-                  <Text style={styles.planMeta}>
-                    {plan.durationMinutes} min • {plan.exercises.length} activities
-                  </Text>
-                  <Text style={styles.planDate}>
-                    {new Date(plan.generatedAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDeletePlan(plan.id)}
-                >
-                  <Icon name="delete" size={20} color="#FF3B30" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.exercisesPreview}>
-                {plan.exercises.slice(0, 3).map((exercise, idx) => (
-                  <Text key={idx} style={styles.exerciseItem}>
-                    {idx + 1}. {exercise}
-                  </Text>
-                ))}
-                {plan.exercises.length > 3 && (
-                  <Text style={styles.moreExercises}>
-                    ... and {plan.exercises.length - 3} more
-                  </Text>
-                )}
-              </View>
-
-              <View style={styles.planActions}>
-                <TouchableOpacity
-                  style={styles.repeatButton}
-                  onPress={() => handleRepeatPlan(plan)}
-                >
-                  <Icon name="play-arrow" size={20} color="#fff" />
-                  <Text style={styles.repeatButtonText}>Repeat Plan</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          savedPlans.map((plan, index) => (
+            <AnimatedHistoryCard
+              key={plan.id}
+              plan={plan}
+              index={index}
+              onRepeat={() => handleRepeatPlan(plan)}
+              onDelete={() => handleDeletePlan(plan.id)}
+            />
           ))
         )}
       </ScrollView>
@@ -168,70 +362,81 @@ export default function CardioPlanHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
-  header: {
+  headerSection: {
+    marginBottom: 20,
+  },
+  headerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
   },
-  placeholder: {
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 2,
+  },
+  clearAllButton: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   planCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  planHeader: {
+  planCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  planHeaderLeft: {
+  planIconContainer: {
+    marginRight: 12,
+  },
+  planIconGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planInfo: {
     flex: 1,
   },
   planName: {
@@ -240,52 +445,131 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
-  planMeta: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
   planDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#999',
   },
-  deleteButton: {
-    padding: 8,
+  deleteIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planStats: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 6,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 8,
   },
   exercisesPreview: {
     marginBottom: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
-  exerciseItem: {
+  exercisesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 10,
+  },
+  exerciseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  exerciseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#667eea',
+    marginRight: 10,
+  },
+  exerciseName: {
     fontSize: 14,
     color: '#333',
-    marginBottom: 4,
+    flex: 1,
   },
   moreExercises: {
     fontSize: 12,
     color: '#999',
     fontStyle: 'italic',
     marginTop: 4,
-  },
-  planActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    marginLeft: 16,
   },
   repeatButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  repeatButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    justifyContent: 'center',
+    paddingVertical: 14,
   },
   repeatButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8,
+  },
+  emptyState: {
+    flex: 1,
+    marginTop: 60,
+  },
+  emptyStateGradient: {
+    alignItems: 'center',
+    padding: 40,
+    borderRadius: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
+  emptyStateButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  emptyStateButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+  },
+  emptyStateButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
     marginLeft: 8,
   },
 });
-

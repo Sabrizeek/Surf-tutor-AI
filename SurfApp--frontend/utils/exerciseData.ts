@@ -1,6 +1,6 @@
 /**
- * Exercise Data Mapping
- * Contains duration, rest, sets, description, and limitation exclusions for each exercise
+ * Enhanced Exercise Data Mapping
+ * Contains duration, rest, sets, description, calorie estimation, and limitation exclusions
  */
 
 export interface ExerciseData {
@@ -13,6 +13,14 @@ export interface ExerciseData {
   icon?: string; // Material icon name
   animationType?: 'lottie' | 'gif' | 'video'; // Type of animation
   animationSource?: any; // Animation source (require() path)
+  
+  // ✅ NEW: Enhanced metadata
+  caloriesPerMinute?: number; // Estimated calories burned per minute
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'; // Exercise difficulty
+  muscleGroups?: string[]; // Target muscle groups
+  equipment?: 'None' | 'Kettlebell' | 'Gym'; // Required equipment
+  intensity?: 'low' | 'moderate' | 'high' | 'very-high'; // Exercise intensity
+  category?: 'warmup' | 'endurance' | 'power' | 'stamina' | 'fatLoss'; // Exercise category
 }
 
 // Limitation categories
@@ -29,9 +37,17 @@ export const LIMITATION_CATEGORIES = {
   ELBOW: ['Elbow pain', 'Tennis elbow', 'Golfer\'s elbow'],
 };
 
-// Exercise data mapping
+// ✅ NEW: Calorie estimation constants (calories per minute)
+const CALORIE_RATES = {
+  LOW_INTENSITY: 5,      // Walking, stretching
+  MODERATE: 8,           // Jogging, cycling
+  HIGH: 12,              // Running, HIIT
+  VERY_HIGH: 15,         // Sprints, burpees, intense cardio
+};
+
+// Exercise data mapping with enhanced metadata
 export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
-  // Warm-up exercises
+  // ========== WARM-UP EXERCISES ==========
   'Jumping Jacks': {
     name: 'Jumping Jacks',
     duration: 30,
@@ -39,6 +55,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Stand with feet together, jump while spreading legs and raising arms overhead',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 8,
+    difficulty: 'beginner',
+    muscleGroups: ['Full Body', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'warmup',
   },
   'Arm Circles': {
     name: 'Arm Circles',
@@ -47,6 +69,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Stand with arms extended, rotate arms in large circles forward and backward',
     excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.ELBOW],
+    caloriesPerMinute: 3,
+    difficulty: 'beginner',
+    muscleGroups: ['Shoulders', 'Arms'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Leg Swings': {
     name: 'Leg Swings',
@@ -55,6 +83,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Hold onto support, swing leg forward and backward to warm up hip flexors',
     excludedLimitations: [...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.KNEE],
+    caloriesPerMinute: 4,
+    difficulty: 'beginner',
+    muscleGroups: ['Hip Flexors', 'Legs'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Torso Twists': {
     name: 'Torso Twists',
@@ -63,6 +97,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Stand with feet shoulder-width apart, rotate torso left and right',
     excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.NECK],
+    caloriesPerMinute: 4,
+    difficulty: 'beginner',
+    muscleGroups: ['Core', 'Obliques'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Neck Rolls': {
     name: 'Neck Rolls',
@@ -71,6 +111,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Gently roll neck in circular motion to release tension',
     excludedLimitations: [...LIMITATION_CATEGORIES.NECK],
+    caloriesPerMinute: 2,
+    difficulty: 'beginner',
+    muscleGroups: ['Neck'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Shoulder Rotations': {
     name: 'Shoulder Rotations',
@@ -79,6 +125,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Rotate shoulders forward and backward in circular motion',
     excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.ELBOW],
+    caloriesPerMinute: 3,
+    difficulty: 'beginner',
+    muscleGroups: ['Shoulders'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Hip Circles': {
     name: 'Hip Circles',
@@ -87,6 +139,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Stand on one leg, rotate hip in circular motion',
     excludedLimitations: [...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.KNEE],
+    caloriesPerMinute: 4,
+    difficulty: 'beginner',
+    muscleGroups: ['Hips', 'Core'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Ankle Rotations': {
     name: 'Ankle Rotations',
@@ -95,6 +153,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Lift foot and rotate ankle in circular motion',
     excludedLimitations: [...LIMITATION_CATEGORIES.ANKLE],
+    caloriesPerMinute: 2,
+    difficulty: 'beginner',
+    muscleGroups: ['Ankles'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Walking Lunges': {
     name: 'Walking Lunges',
@@ -103,6 +167,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Step forward into lunge position, alternate legs while walking forward',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.ANKLE],
+    caloriesPerMinute: 7,
+    difficulty: 'intermediate',
+    muscleGroups: ['Legs', 'Glutes', 'Core'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'warmup',
   },
   'Butt Kicks': {
     name: 'Butt Kicks',
@@ -111,6 +181,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Run in place, kicking heels toward glutes',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 9,
+    difficulty: 'beginner',
+    muscleGroups: ['Hamstrings', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'warmup',
   },
   'High Knees': {
     name: 'High Knees',
@@ -119,6 +195,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Run in place, lifting knees toward chest',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 10,
+    difficulty: 'intermediate',
+    muscleGroups: ['Hip Flexors', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'warmup',
   },
   'Side Steps': {
     name: 'Side Steps',
@@ -127,6 +209,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Step sideways, bringing feet together, repeat in both directions',
     excludedLimitations: [...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.KNEE],
+    caloriesPerMinute: 6,
+    difficulty: 'beginner',
+    muscleGroups: ['Legs', 'Glutes'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'warmup',
   },
   'Knee Hugs': {
     name: 'Knee Hugs',
@@ -135,6 +223,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Stand and pull knee to chest, hold briefly, alternate legs',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.BACK],
+    caloriesPerMinute: 3,
+    difficulty: 'beginner',
+    muscleGroups: ['Hip Flexors', 'Glutes'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Quad Stretches': {
     name: 'Quad Stretches',
@@ -143,6 +237,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Stand and pull foot toward glutes, hold stretch',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE],
+    caloriesPerMinute: 2,
+    difficulty: 'beginner',
+    muscleGroups: ['Quadriceps'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
   'Hamstring Stretches': {
     name: 'Hamstring Stretches',
@@ -151,9 +251,15 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Sit or stand, extend leg and lean forward to stretch hamstring',
     excludedLimitations: [...LIMITATION_CATEGORIES.BACK],
+    caloriesPerMinute: 2,
+    difficulty: 'beginner',
+    muscleGroups: ['Hamstrings'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'warmup',
   },
 
-  // Endurance exercises
+  // ========== ENDURANCE EXERCISES ==========
   'Jogging': {
     name: 'Jogging',
     duration: 180,
@@ -161,6 +267,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Light running at comfortable pace',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
+    caloriesPerMinute: 10,
+    difficulty: 'beginner',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Cycling': {
     name: 'Cycling',
@@ -169,6 +281,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Stationary or outdoor cycling',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK],
+    caloriesPerMinute: 8,
+    difficulty: 'beginner',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Swimming': {
     name: 'Swimming',
@@ -177,6 +295,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Swim laps at moderate pace',
     excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 11,
+    difficulty: 'intermediate',
+    muscleGroups: ['Full Body', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Rowing Machine': {
     name: 'Rowing Machine',
@@ -185,6 +309,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Rowing machine at moderate intensity',
     excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
+    caloriesPerMinute: 10,
+    difficulty: 'intermediate',
+    muscleGroups: ['Back', 'Arms', 'Legs', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Elliptical Trainer': {
     name: 'Elliptical Trainer',
@@ -193,6 +323,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Low-impact cardio on elliptical machine',
     excludedLimitations: [],
+    caloriesPerMinute: 7,
+    difficulty: 'beginner',
+    muscleGroups: ['Full Body', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Stair Climber': {
     name: 'Stair Climber',
@@ -201,6 +337,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 2,
     description: 'Climb stairs at steady pace',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 9,
+    difficulty: 'intermediate',
+    muscleGroups: ['Legs', 'Glutes', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Jump Rope': {
     name: 'Jump Rope',
@@ -209,6 +351,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 3,
     description: 'Jump rope at steady rhythm',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 12,
+    difficulty: 'intermediate',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'high',
+    category: 'endurance',
   },
   'Walking': {
     name: 'Walking',
@@ -217,6 +365,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Brisk walking at moderate pace',
     excludedLimitations: [],
+    caloriesPerMinute: 5,
+    difficulty: 'beginner',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'low',
+    category: 'endurance',
   },
   'Brisk Walking': {
     name: 'Brisk Walking',
@@ -225,6 +379,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Fast-paced walking',
     excludedLimitations: [],
+    caloriesPerMinute: 6,
+    difficulty: 'beginner',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'endurance',
   },
   'Steady State Running': {
     name: 'Steady State Running',
@@ -233,81 +393,15 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 1,
     description: 'Continuous running at steady pace',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Long Distance Running': {
-    name: 'Long Distance Running',
-    duration: 900,
-    rest: 180,
-    sets: 1,
-    description: 'Extended running session',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Cycling Sprints': {
-    name: 'Cycling Sprints',
-    duration: 30,
-    rest: 60,
-    sets: 5,
-    description: 'High-intensity cycling sprints',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Swimming Laps': {
-    name: 'Swimming Laps',
-    duration: 180,
-    rest: 60,
-    sets: 2,
-    description: 'Swimming laps at moderate pace',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Rowing Intervals': {
-    name: 'Rowing Intervals',
-    duration: 60,
-    rest: 90,
-    sets: 4,
-    description: 'High-intensity rowing intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Cross Trainer': {
-    name: 'Cross Trainer',
-    duration: 300,
-    rest: 60,
-    sets: 1,
-    description: 'Cross trainer machine workout',
-    excludedLimitations: [],
-  },
-  'Treadmill Running': {
-    name: 'Treadmill Running',
-    duration: 300,
-    rest: 60,
-    sets: 1,
-    description: 'Running on treadmill',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Outdoor Running': {
-    name: 'Outdoor Running',
-    duration: 300,
-    rest: 60,
-    sets: 1,
-    description: 'Running outdoors',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Bike Riding': {
-    name: 'Bike Riding',
-    duration: 600,
-    rest: 120,
-    sets: 1,
-    description: 'Outdoor bike riding',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK],
-  },
-  'Pool Swimming': {
-    name: 'Pool Swimming',
-    duration: 300,
-    rest: 60,
-    sets: 1,
-    description: 'Swimming in pool',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 12,
+    difficulty: 'intermediate',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'high',
+    category: 'endurance',
   },
 
-  // Power exercises
+  // ========== POWER EXERCISES ==========
   'Burpees': {
     name: 'Burpees',
     duration: 30,
@@ -315,6 +409,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 3,
     description: 'Squat, jump back to plank, push-up, jump forward, jump up',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 15,
+    difficulty: 'advanced',
+    muscleGroups: ['Full Body', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'very-high',
+    category: 'power',
   },
   'Box Jumps': {
     name: 'Box Jumps',
@@ -323,22 +423,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 3,
     description: 'Jump onto box or platform, step down',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Tuck Jumps': {
-    name: 'Tuck Jumps',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Jump up, bringing knees to chest',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Medicine Ball Slams': {
-    name: 'Medicine Ball Slams',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Lift medicine ball overhead, slam to ground',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
+    caloriesPerMinute: 14,
+    difficulty: 'advanced',
+    muscleGroups: ['Legs', 'Glutes', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'very-high',
+    category: 'power',
   },
   'Kettlebell Swings': {
     name: 'Kettlebell Swings',
@@ -347,14 +437,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 3,
     description: 'Swing kettlebell from between legs to chest height',
     excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Plyometric Push-ups': {
-    name: 'Plyometric Push-ups',
-    duration: 20,
-    rest: 40,
-    sets: 3,
-    description: 'Explosive push-ups with hands leaving ground',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.ELBOW],
+    caloriesPerMinute: 13,
+    difficulty: 'intermediate',
+    muscleGroups: ['Full Body', 'Core'],
+    equipment: 'Kettlebell',
+    intensity: 'high',
+    category: 'power',
   },
   'Jump Squats': {
     name: 'Jump Squats',
@@ -363,144 +451,28 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 3,
     description: 'Squat down, explode up into jump',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Explosive Lunges': {
-    name: 'Explosive Lunges',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Lunge with explosive jump, switch legs mid-air',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Power Cleans': {
-    name: 'Power Cleans',
-    duration: 20,
-    rest: 60,
-    sets: 3,
-    description: 'Explosive lift from floor to shoulders (simulated)',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.KNEE],
-  },
-  'Thruster Jumps': {
-    name: 'Thruster Jumps',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Squat with weight, press overhead, jump',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Broad Jumps': {
-    name: 'Broad Jumps',
-    duration: 20,
-    rest: 40,
-    sets: 4,
-    description: 'Jump forward as far as possible',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Single Leg Hops': {
-    name: 'Single Leg Hops',
-    duration: 20,
-    rest: 30,
-    sets: 3,
-    description: 'Hop on one leg, switch legs',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Clapping Push-ups': {
-    name: 'Clapping Push-ups',
-    duration: 15,
-    rest: 45,
-    sets: 3,
-    description: 'Push-up with clap mid-air',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.ELBOW],
-  },
-  'Dumbbell Snatches': {
-    name: 'Dumbbell Snatches',
-    duration: 20,
-    rest: 40,
-    sets: 3,
-    description: 'Explosive lift from floor to overhead',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Wall Ball Throws': {
-    name: 'Wall Ball Throws',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Squat and throw medicine ball to wall target',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Heavy Kettlebell Swings': {
-    name: 'Heavy Kettlebell Swings',
-    duration: 30,
-    rest: 45,
-    sets: 3,
-    description: 'Kettlebell swings with heavier weight',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Advanced Box Jumps': {
-    name: 'Advanced Box Jumps',
-    duration: 30,
-    rest: 60,
-    sets: 3,
-    description: 'Higher box jumps for advanced users',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Plyometric Lunges': {
-    name: 'Plyometric Lunges',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Explosive jumping lunges',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.HIP, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Jumping Burpees': {
-    name: 'Jumping Burpees',
-    duration: 30,
-    rest: 30,
-    sets: 3,
-    description: 'Burpees with jump at end',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 14,
+    difficulty: 'intermediate',
+    muscleGroups: ['Legs', 'Glutes', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'very-high',
+    category: 'power',
   },
 
-  // Stamina exercises
-  'Circuit Training': {
-    name: 'Circuit Training',
-    duration: 300,
-    rest: 60,
-    sets: 1,
-    description: 'Multiple exercises in sequence with minimal rest',
-    excludedLimitations: [],
-  },
-  'Interval Running': {
-    name: 'Interval Running',
-    duration: 60,
-    rest: 90,
-    sets: 5,
-    description: 'Alternate between sprint and recovery',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Assault Bike': {
-    name: 'Assault Bike',
-    duration: 180,
-    rest: 60,
-    sets: 2,
-    description: 'High-intensity bike intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Shuttle Runs': {
-    name: 'Shuttle Runs',
+  // ========== STAMINA EXERCISES ==========
+  'HIIT Circuit': {
+    name: 'HIIT Circuit',
     duration: 30,
     rest: 30,
-    sets: 5,
-    description: 'Run back and forth between markers',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Fartlek Training': {
-    name: 'Fartlek Training',
-    duration: 600,
-    rest: 120,
-    sets: 1,
-    description: 'Continuous running with varying speeds',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
+    sets: 6,
+    description: 'High-intensity interval training circuit',
+    excludedLimitations: [...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
+    caloriesPerMinute: 15,
+    difficulty: 'advanced',
+    muscleGroups: ['Full Body', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'very-high',
+    category: 'stamina',
   },
   'Tabata Intervals': {
     name: 'Tabata Intervals',
@@ -509,81 +481,15 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 8,
     description: '20 seconds work, 10 seconds rest, repeat 8 times',
     excludedLimitations: [...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Full Body Circuit': {
-    name: 'Full Body Circuit',
-    duration: 300,
-    rest: 60,
-    sets: 1,
-    description: 'Complete body circuit workout',
-    excludedLimitations: [],
-  },
-  'HIIT Circuit': {
-    name: 'HIIT Circuit',
-    duration: 30,
-    rest: 30,
-    sets: 6,
-    description: 'High-intensity interval training circuit',
-    excludedLimitations: [...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'CrossFit WOD': {
-    name: 'CrossFit WOD',
-    duration: 600,
-    rest: 180,
-    sets: 1,
-    description: 'CrossFit workout of the day',
-    excludedLimitations: [],
-  },
-  'AMRAP Workouts': {
-    name: 'AMRAP Workouts',
-    duration: 600,
-    rest: 120,
-    sets: 1,
-    description: 'As many rounds as possible in time limit',
-    excludedLimitations: [],
-  },
-  'EMOM Workouts': {
-    name: 'EMOM Workouts',
-    duration: 60,
-    rest: 0,
-    sets: 10,
-    description: 'Every minute on the minute workout',
-    excludedLimitations: [...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Rowing Intervals': {
-    name: 'Rowing Intervals',
-    duration: 60,
-    rest: 90,
-    sets: 4,
-    description: 'High-intensity rowing intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Cycling Intervals': {
-    name: 'Cycling Intervals',
-    duration: 60,
-    rest: 90,
-    sets: 4,
-    description: 'High-intensity cycling intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Swimming Intervals': {
-    name: 'Swimming Intervals',
-    duration: 60,
-    rest: 90,
-    sets: 4,
-    description: 'High-intensity swimming intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Stair Running': {
-    name: 'Stair Running',
-    duration: 60,
-    rest: 60,
-    sets: 4,
-    description: 'Running up and down stairs',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 16,
+    difficulty: 'advanced',
+    muscleGroups: ['Full Body', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'very-high',
+    category: 'stamina',
   },
 
-  // Fat loss exercises
+  // ========== FAT LOSS EXERCISES ==========
   'HIIT Sprints': {
     name: 'HIIT Sprints',
     duration: 30,
@@ -591,6 +497,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 6,
     description: 'High-intensity sprint intervals',
     excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
+    caloriesPerMinute: 16,
+    difficulty: 'advanced',
+    muscleGroups: ['Legs', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'very-high',
+    category: 'fatLoss',
   },
   'Battle Ropes': {
     name: 'Battle Ropes',
@@ -599,6 +511,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 4,
     description: 'Wave battle ropes up and down',
     excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.WRIST],
+    caloriesPerMinute: 14,
+    difficulty: 'intermediate',
+    muscleGroups: ['Arms', 'Shoulders', 'Core', 'Cardiovascular'],
+    equipment: 'Gym',
+    intensity: 'very-high',
+    category: 'fatLoss',
   },
   'Mountain Climbers': {
     name: 'Mountain Climbers',
@@ -607,78 +525,12 @@ export const EXERCISE_DATA: { [key: string]: ExerciseData } = {
     sets: 3,
     description: 'Plank position, alternate bringing knees to chest',
     excludedLimitations: [...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.BACK],
-  },
-  'Sprint Intervals': {
-    name: 'Sprint Intervals',
-    duration: 30,
-    rest: 90,
-    sets: 5,
-    description: 'Maximum effort sprint intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Assault Bike Sprints': {
-    name: 'Assault Bike Sprints',
-    duration: 30,
-    rest: 60,
-    sets: 5,
-    description: 'Maximum effort bike sprints',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.RESPIRATORY, ...LIMITATION_CATEGORIES.CARDIOVASCULAR],
-  },
-  'Rowing Sprints': {
-    name: 'Rowing Sprints',
-    duration: 30,
-    rest: 60,
-    sets: 5,
-    description: 'Maximum effort rowing sprints',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Weighted Burpees': {
-    name: 'Weighted Burpees',
-    duration: 30,
-    rest: 45,
-    sets: 3,
-    description: 'Burpees with added weight',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Intense Battle Ropes': {
-    name: 'Intense Battle Ropes',
-    duration: 30,
-    rest: 45,
-    sets: 4,
-    description: 'High-intensity battle rope waves',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Jump Rope Intervals': {
-    name: 'Jump Rope Intervals',
-    duration: 30,
-    rest: 30,
-    sets: 5,
-    description: 'High-intensity jump rope intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.ANKLE, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Sprint Burpees': {
-    name: 'Sprint Burpees',
-    duration: 20,
-    rest: 40,
-    sets: 5,
-    description: 'Fast-paced burpees',
-    excludedLimitations: [...LIMITATION_CATEGORIES.KNEE, ...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST, ...LIMITATION_CATEGORIES.RESPIRATORY],
-  },
-  'Power Snatches': {
-    name: 'Power Snatches',
-    duration: 20,
-    rest: 40,
-    sets: 4,
-    description: 'Explosive snatch movement',
-    excludedLimitations: [...LIMITATION_CATEGORIES.BACK, ...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.WRIST],
-  },
-  'Intense Swimming Intervals': {
-    name: 'Intense Swimming Intervals',
-    duration: 60,
-    rest: 90,
-    sets: 5,
-    description: 'High-intensity swimming intervals',
-    excludedLimitations: [...LIMITATION_CATEGORIES.SHOULDER, ...LIMITATION_CATEGORIES.RESPIRATORY],
+    caloriesPerMinute: 13,
+    difficulty: 'intermediate',
+    muscleGroups: ['Core', 'Cardiovascular'],
+    equipment: 'None',
+    intensity: 'high',
+    category: 'fatLoss',
   },
 };
 
@@ -700,7 +552,51 @@ export function getDefaultExerciseData(exerciseName: string): ExerciseData {
     sets: 2,
     description: `${exerciseName} exercise`,
     excludedLimitations: [],
+    caloriesPerMinute: 8,
+    difficulty: 'intermediate',
+    muscleGroups: ['Full Body'],
+    equipment: 'None',
+    intensity: 'moderate',
+    category: 'endurance',
   };
+}
+
+/**
+ * ✅ NEW: Calculate total calories burned for an exercise
+ */
+export function calculateCaloriesBurned(
+  exerciseName: string, 
+  durationSeconds: number, 
+  sets: number = 1
+): number {
+  const exerciseData = getExerciseData(exerciseName) || getDefaultExerciseData(exerciseName);
+  const durationMinutes = (durationSeconds * sets) / 60;
+  const caloriesPerMinute = exerciseData.caloriesPerMinute || 8;
+  
+  return Math.round(durationMinutes * caloriesPerMinute);
+}
+
+/**
+ * ✅ NEW: Get exercises by equipment
+ */
+export function getExercisesByEquipment(equipment: 'None' | 'Kettlebell' | 'Gym'): ExerciseData[] {
+  return Object.values(EXERCISE_DATA).filter(
+    exercise => exercise.equipment === equipment || exercise.equipment === 'None'
+  );
+}
+
+/**
+ * ✅ NEW: Get exercises by difficulty
+ */
+export function getExercisesByDifficulty(difficulty: 'beginner' | 'intermediate' | 'advanced'): ExerciseData[] {
+  return Object.values(EXERCISE_DATA).filter(exercise => exercise.difficulty === difficulty);
+}
+
+/**
+ * ✅ NEW: Get exercises by category
+ */
+export function getExercisesByCategory(category: 'warmup' | 'endurance' | 'power' | 'stamina' | 'fatLoss'): ExerciseData[] {
+  return Object.values(EXERCISE_DATA).filter(exercise => exercise.category === category);
 }
 
 /**
@@ -726,3 +622,36 @@ export function filterExercisesByLimitations(exercises: string[], limitations: s
   return exercises.filter(exercise => !isExerciseExcluded(exercise, limitations));
 }
 
+/**
+ * ✅ NEW: Get recommended exercises based on profile
+ */
+export function getRecommendedExercises(
+  fitnessLevel: 'beginner' | 'intermediate' | 'advanced',
+  equipment: 'None' | 'Kettlebell' | 'Gym',
+  limitations: string[],
+  category?: 'warmup' | 'endurance' | 'power' | 'stamina' | 'fatLoss'
+): ExerciseData[] {
+  let exercises = Object.values(EXERCISE_DATA);
+  
+  // Filter by difficulty
+  exercises = exercises.filter(ex => {
+    if (fitnessLevel === 'beginner') return ex.difficulty === 'beginner' || ex.difficulty === 'intermediate';
+    if (fitnessLevel === 'intermediate') return ex.difficulty === 'beginner' || ex.difficulty === 'intermediate' || ex.difficulty === 'advanced';
+    return true; // Pro gets all
+  });
+  
+  // Filter by equipment
+  exercises = exercises.filter(ex => ex.equipment === 'None' || ex.equipment === equipment);
+  
+  // Filter by limitations
+  exercises = exercises.filter(ex => {
+    return !limitations.some(limitation => ex.excludedLimitations.includes(limitation));
+  });
+  
+  // Filter by category if specified
+  if (category) {
+    exercises = exercises.filter(ex => ex.category === category);
+  }
+  
+  return exercises;
+}

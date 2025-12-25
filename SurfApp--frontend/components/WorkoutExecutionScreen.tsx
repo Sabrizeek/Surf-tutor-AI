@@ -18,6 +18,7 @@ import { getExerciseData, getDefaultExerciseData } from '../utils/exerciseData';
 import ExerciseAnimation from './ExerciseAnimation';
 import { generateWorkoutFeedback } from '../utils/workoutFeedback';
 import { WorkoutProgress } from '../utils/adaptiveProgress';
+import SafeLinearGradient from './SafeLinearGradient';
 
 // Animated Button Component with Ripple Effect
 const AnimatedButton = ({ children, onPress, style }: { children: React.ReactNode; onPress: () => void; style?: any }) => {
@@ -558,23 +559,43 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
   if (state === 'idle') {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.idleContainer}>
+        <SafeLinearGradient
+          colors={['#667eea', '#764ba2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.idleHeader}
+        >
           <Text style={styles.planTitle}>{workoutPlan.planName}</Text>
           <Text style={styles.planSubtitle}>
             {activities.length} activities • {workoutPlan.durationMinutes || 30} minutes
           </Text>
-          <ScrollView style={styles.activitiesPreview}>
-            {activities.map((activity, idx) => (
-              <View key={idx} style={styles.previewItem}>
-                <Text style={styles.previewItemText}>
-                  {idx + 1}. {activity.name} ({activity.sets} sets × {activity.duration}s)
+        </SafeLinearGradient>
+        <ScrollView style={styles.activitiesPreview} contentContainerStyle={styles.activitiesPreviewContent}>
+          {activities.map((activity, idx) => (
+            <View key={idx} style={styles.previewItem}>
+              <View style={styles.previewItemNumber}>
+                <Text style={styles.previewItemNumberText}>{idx + 1}</Text>
+              </View>
+              <View style={styles.previewItemContent}>
+                <Text style={styles.previewItemText}>{activity.name}</Text>
+                <Text style={styles.previewItemDetails}>
+                  {activity.sets} sets × {activity.duration}s
                 </Text>
               </View>
-            ))}
-          </ScrollView>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.idleFooter}>
           <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-            <Icon name="play-arrow" size={32} color="#fff" />
-            <Text style={styles.startButtonText}>Start Workout</Text>
+            <SafeLinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.startButtonGradient}
+            >
+              <Icon name="play-arrow" size={32} color="#fff" />
+              <Text style={styles.startButtonText}>Start Workout</Text>
+            </SafeLinearGradient>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -596,30 +617,47 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
     const exerciseData = getExerciseData(currentActivity.name) || getDefaultExerciseData(currentActivity.name);
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.readyContainer}>
+        <SafeLinearGradient
+          colors={['#667eea', '#764ba2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.readyHeader}
+        >
           <Text style={styles.readyTitle}>Ready for {currentActivity.name}?</Text>
-          
+        </SafeLinearGradient>
+        <ScrollView 
+          style={styles.readyScrollView}
+          contentContainerStyle={styles.readyContainer}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Exercise Animation Preview */}
           <View style={styles.readyAnimationContainer}>
             <ExerciseAnimation exerciseName={currentActivity.name} size={200} />
           </View>
           
-          <Text style={styles.readyDescription}>{exerciseData.description}</Text>
-          <View style={styles.readyDetailsContainer}>
-            <View style={styles.readyDetailItem}>
-              <Icon name="timer" size={20} color="#007AFF" />
-              <Text style={styles.readyDetailText}>{currentActivity.duration}s per set</Text>
-            </View>
-            <View style={styles.readyDetailItem}>
-              <Icon name="repeat" size={20} color="#007AFF" />
-              <Text style={styles.readyDetailText}>{currentActivity.sets} sets</Text>
-            </View>
-            <View style={styles.readyDetailItem}>
-              <Icon name="pause-circle-filled" size={20} color="#FF9500" />
-              <Text style={styles.readyDetailText}>{currentActivity.rest}s rest</Text>
+          <View style={styles.readyCard}>
+            <Text style={styles.readyDescription}>{exerciseData.description}</Text>
+            <View style={styles.readyDetailsContainer}>
+              <View style={styles.readyDetailCard}>
+                <Icon name="timer" size={24} color="#667eea" />
+                <Text style={styles.readyDetailText}>{currentActivity.duration}s</Text>
+                <Text style={styles.readyDetailLabel}>per set</Text>
+              </View>
+              <View style={styles.readyDetailCard}>
+                <Icon name="repeat" size={24} color="#667eea" />
+                <Text style={styles.readyDetailText}>{currentActivity.sets}</Text>
+                <Text style={styles.readyDetailLabel}>sets</Text>
+              </View>
+              <View style={styles.readyDetailCard}>
+                <Icon name="pause-circle-filled" size={24} color="#FF9500" />
+                <Text style={styles.readyDetailText}>{currentActivity.rest}s</Text>
+                <Text style={styles.readyDetailLabel}>rest</Text>
+              </View>
             </View>
           </View>
-          
+        </ScrollView>
+        
+        <View style={styles.readyFooter}>
           <TouchableOpacity 
             style={styles.startActivityButton}
             onPress={() => {
@@ -633,8 +671,15 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
               ));
             }}
           >
-            <Icon name="play-arrow" size={32} color="#fff" />
-            <Text style={styles.startActivityButtonText}>Start Activity</Text>
+            <SafeLinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.startActivityButtonGradient}
+            >
+              <Icon name="play-arrow" size={32} color="#fff" />
+              <Text style={styles.startActivityButtonText}>Start Activity</Text>
+            </SafeLinearGradient>
           </TouchableOpacity>
           
           <View style={styles.readyActionsContainer}>
@@ -650,7 +695,7 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
               onPress={handleEndWorkout}
             >
               <Icon name="stop" size={20} color="#FF3B30" />
-              <Text style={styles.readyActionText}>End Workout</Text>
+              <Text style={styles.readyActionText}>End</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -665,16 +710,20 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
 
   return (
     <SafeAreaView style={styles.container}>
+      <SafeLinearGradient
+        colors={['#667eea', '#764ba2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <Text style={styles.headerText}>
+          {state === 'active' ? 'Activity' : state === 'rest' ? 'Rest' : 'Paused'}
+        </Text>
+        <Text style={styles.headerSubtext}>
+          {currentActivityIndex + 1} of {activities.length}
+        </Text>
+      </SafeLinearGradient>
       <View style={styles.workoutContainer}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerText}>
-            {state === 'active' ? 'Activity' : state === 'rest' ? 'Rest' : 'Paused'}
-          </Text>
-          <Text style={styles.headerSubtext}>
-            {currentActivityIndex + 1} of {activities.length}
-          </Text>
-        </View>
 
         {/* Current Activity Display */}
         <View style={styles.currentActivityContainer}>
@@ -685,8 +734,13 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
             </View>
           )}
 
-          {/* Progress Ring */}
-          <View style={styles.progressContainer}>
+          {/* Progress Ring with Gradient Background */}
+          <SafeLinearGradient
+            colors={state === 'active' ? ['#667eea', '#764ba2'] : ['#FF9500', '#FF6B4A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.progressRingContainer}
+          >
             <View style={styles.progressRing}>
               <Animated.View
                 style={[
@@ -712,24 +766,33 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
                 </Text>
               </View>
             </View>
-          </View>
+          </SafeLinearGradient>
 
           {/* Current Activity Controls */}
           <View style={styles.currentActivityControls}>
             <AnimatedButton
-              style={[styles.actionButton, styles.skipButton]}
+              style={styles.actionButtonWrapper}
               onPress={() => handleSkipActivity(currentActivityIndex)}
             >
-              <Icon name="skip-next" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Skip</Text>
+              <View style={[styles.actionButton, styles.skipButton]}>
+                <Icon name="skip-next" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Skip</Text>
+              </View>
             </AnimatedButton>
             
             <AnimatedButton
-              style={[styles.actionButton, styles.completeButton]}
+              style={styles.actionButtonWrapper}
               onPress={() => handleCompleteActivity(currentActivityIndex)}
             >
-              <Icon name="check" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Complete</Text>
+              <SafeLinearGradient
+                colors={['#4CAF50', '#45a049']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.actionButton}
+              >
+                <Icon name="check" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Complete</Text>
+              </SafeLinearGradient>
             </AnimatedButton>
           </View>
         </View>
@@ -814,16 +877,23 @@ export default function WorkoutExecutionScreen({ workoutPlan, onComplete }: Work
 
         {/* Main Controls */}
         <View style={styles.controlsContainer}>
-          <TouchableOpacity
-            style={[styles.controlButton, styles.controlButtonPrimary]}
+          <AnimatedButton
+            style={styles.controlButtonWrapper}
             onPress={handlePause}
           >
-            <Icon
-              name={state === 'paused' ? 'play-arrow' : 'pause'}
-              size={32}
-              color="#fff"
-            />
-          </TouchableOpacity>
+            <SafeLinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.controlButton, styles.controlButtonPrimary]}
+            >
+              <Icon
+                name={state === 'paused' ? 'play-arrow' : 'pause'}
+                size={32}
+                color="#fff"
+              />
+            </SafeLinearGradient>
+          </AnimatedButton>
           
           <TouchableOpacity style={styles.controlButton} onPress={handleEndWorkout}>
             <Icon name="stop" size={28} color="#FF3B30" />
@@ -860,53 +930,93 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  idleContainer: {
-    flex: 1,
-    padding: 20,
+  idleHeader: {
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
   planTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 8,
     textAlign: 'center',
   },
   planSubtitle: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
   },
   activitiesPreview: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  activitiesPreviewContent: {
+    paddingBottom: 20,
+  },
+  previewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  previewItem: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  previewItemNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#667eea',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  previewItemNumberText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  previewItemContent: {
+    flex: 1,
   },
   previewItemText: {
     fontSize: 16,
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
+  },
+  previewItemDetails: {
+    fontSize: 14,
+    color: '#666',
+  },
+  idleFooter: {
+    padding: 20,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
   startButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  startButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
     paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
   },
   startButtonText: {
     color: '#fff',
     fontSize: 20,
     fontWeight: '600',
-    marginLeft: 8,
+    marginLeft: 12,
   },
   countdownContainer: {
     flex: 1,
@@ -928,23 +1038,38 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
     alignItems: 'center',
     marginBottom: 16,
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
   },
   headerSubtext: {
     fontSize: 16,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 4,
   },
   currentActivityContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  progressRingContainer: {
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
   animationContainer: {
@@ -958,10 +1083,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   progressRing: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: '#e0e0e0',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -998,19 +1123,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 16,
+    gap: 12,
+  },
+  actionButtonWrapper: {
+    flex: 1,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   skipButton: {
     backgroundColor: '#FF9500',
-  },
-  completeButton: {
-    backgroundColor: '#4CAF50',
   },
   actionButtonText: {
     color: '#fff',
@@ -1021,9 +1148,14 @@ const styles = StyleSheet.create({
   activityListContainer: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   activityListTitle: {
     fontSize: 18,
@@ -1037,15 +1169,16 @@ const styles = StyleSheet.create({
   activityListItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#f8f9fa',
   },
   activityListItemCurrent: {
     backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-    marginVertical: 4,
+    borderWidth: 2,
+    borderColor: '#667eea',
   },
   activityListItemCompleted: {
     opacity: 0.7,
@@ -1077,9 +1210,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   statItem: {
     alignItems: 'center',
@@ -1099,13 +1237,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 24,
+    marginBottom: 16,
+  },
+  controlButtonWrapper: {
+    borderRadius: 35,
   },
   controlButton: {
     alignItems: 'center',
+    justifyContent: 'center',
     padding: 12,
+    borderRadius: 35,
+    width: 70,
+    height: 70,
   },
   controlButtonPrimary: {
-    backgroundColor: '#007AFF',
     borderRadius: 35,
     width: 70,
     height: 70,
@@ -1135,17 +1280,23 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
   },
-  readyContainer: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
+  readyHeader: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
+  readyScrollView: {
+    flex: 1,
+  },
+  readyContainer: {
+    padding: 20,
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
   readyTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 24,
+    color: '#fff',
     textAlign: 'center',
   },
   readyAnimationContainer: {
@@ -1153,45 +1304,75 @@ const styles = StyleSheet.create({
     height: 250,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 24,
     marginBottom: 24,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  readyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   readyDescription: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
     marginBottom: 24,
-    paddingHorizontal: 20,
     lineHeight: 24,
   },
   readyDetailsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    gap: 12,
   },
-  readyDetailItem: {
-    alignItems: 'center',
+  readyDetailCard: {
     flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
   },
   readyDetailText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
     marginTop: 8,
+  },
+  readyDetailLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
     textAlign: 'center',
   },
+  readyFooter: {
+    padding: 20,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
   startActivityButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  startActivityButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
     paddingHorizontal: 48,
     paddingVertical: 18,
-    borderRadius: 12,
-    marginBottom: 24,
-    minWidth: 200,
   },
   startActivityButtonText: {
     color: '#fff',
@@ -1202,19 +1383,22 @@ const styles = StyleSheet.create({
   readyActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    width: '100%',
-    paddingHorizontal: 20,
+    gap: 12,
   },
   readyActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   readyActionText: {
     fontSize: 14,
     color: '#666',
     marginLeft: 8,
+    fontWeight: '600',
   },
 });
