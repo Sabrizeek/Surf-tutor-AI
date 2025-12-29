@@ -11,9 +11,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import SafeLinearGradient from './SafeLinearGradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCardioProfile, CardioProfile } from '../context/CardioProfileContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +26,7 @@ interface QuizStep {
 }
 
 export default function CardioQuizScreen({ onComplete }: { onComplete: () => void }) {
+  const router = useRouter();
   const { saveProfile } = useCardioProfile();
   const [currentStep, setCurrentStep] = useState(0);
   const [fitnessLevel, setFitnessLevel] = useState('');
@@ -35,18 +37,17 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
   const [limitations, setLimitations] = useState<string[]>([]);
   const [equipment, setEquipment] = useState('');
 
-  // ✅ Animations
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const steps: QuizStep[] = [
     { id: 0, title: 'Fitness Level', question: 'What is your current fitness level?', icon: 'trending-up' },
-    { id: 1, title: 'Goal', question: 'What is your main goal before surfing?', icon: 'flag' },
-    { id: 2, title: 'Duration', question: 'How long can you train before surfing?', icon: 'schedule' },
-    { id: 3, title: 'Body Info', question: 'Enter your body measurements', icon: 'person' },
-    { id: 4, title: 'Equipment', question: 'What equipment do you have?', icon: 'fitness-center' },
-    { id: 5, title: 'Limitations', question: 'Any physical limitations?', icon: 'health-and-safety' },
+    { id: 1, title: 'Goal', question: 'What is your main goal?', icon: 'flag' },
+    { id: 2, title: 'Duration', question: 'How long can you train?', icon: 'schedule' },
+    { id: 3, title: 'Body Info', question: 'Body measurements (optional)', icon: 'person' },
+    { id: 4, title: 'Equipment', question: 'Available equipment?', icon: 'fitness-center' },
+    { id: 5, title: 'Limitations', question: 'Physical limitations?', icon: 'health-and-safety' },
   ];
 
   useEffect(() => {
@@ -64,7 +65,6 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
       }),
     ]).start();
 
-    // Animate progress bar
     Animated.timing(progressAnim, {
       toValue: (currentStep + 1) / steps.length,
       duration: 400,
@@ -73,57 +73,36 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
   }, [currentStep]);
 
   const fitnessLevels = [
-    { value: 'Beginner', icon: 'star-outline', color: '#4CAF50', description: 'New to fitness' },
-    { value: 'Intermediate', icon: 'star-half', color: '#FF9800', description: 'Some experience' },
-    { value: 'Pro', icon: 'star', color: '#F44336', description: 'Very experienced' },
+    { value: 'Beginner', icon: 'star-outline', color: '#4CAF50' },
+    { value: 'Intermediate', icon: 'star-half', color: '#FF9800' },
+    { value: 'Pro', icon: 'star', color: '#F44336' },
   ];
 
   const goals = [
-    { value: 'Warm up only', icon: 'wb-sunny', description: 'Light preparation' },
-    { value: 'Improve endurance', icon: 'directions-run', description: 'Build stamina' },
-    { value: 'Improve explosive pop-up speed', icon: 'flash-on', description: 'Power & speed' },
+    { value: 'Warm up only', icon: 'wb-sunny' },
+    { value: 'Improve endurance', icon: 'directions-run' },
+    { value: 'Improve explosive pop-up speed', icon: 'flash-on' },
   ];
 
   const durations = [
-    { value: '5-10 minutes', icon: 'timer', description: 'Quick session' },
-    { value: '10-20 minutes', icon: 'timer', description: 'Moderate session' },
-    { value: '20+ minutes', icon: 'timer', description: 'Full session' },
+    { value: '5-10 minutes', icon: 'timer' },
+    { value: '10-20 minutes', icon: 'timer' },
+    { value: '20+ minutes', icon: 'timer' },
   ];
 
   const equipmentOptions = [
-    { value: 'None', icon: 'accessibility', description: 'Bodyweight only' },
-    { value: 'Kettlebell', icon: 'fitness-center', description: 'KB exercises' },
-    { value: 'Gym', icon: 'home', description: 'Full equipment' },
+    { value: 'None', icon: 'accessibility' },
+    { value: 'Kettlebell', icon: 'fitness-center' },
+    { value: 'Gym', icon: 'home' },
   ];
 
   const limitationOptions = [
-    'None',
-    'Knee discomfort',
-    'Knee injury',
-    'Lower back tightness',
-    'Lower back pain',
-    'Upper back pain',
-    'Shoulder injury',
-    'Shoulder pain',
-    'Rotator cuff issues',
-    'Ankle injury',
-    'Ankle pain',
-    'Ankle instability',
-    'Wrist injury',
-    'Wrist pain',
-    'Carpal tunnel',
-    'Hip discomfort',
-    'Hip pain',
-    'Hip injury',
-    'Neck pain',
-    'Neck injury',
-    'Elbow pain',
-    'Tennis elbow',
-    'Golfer\'s elbow',
-    'Asthma',
-    'Breathing difficulties',
-    'Heart conditions',
-    'High blood pressure',
+    'None', 'Knee discomfort', 'Knee injury', 'Lower back tightness', 'Lower back pain',
+    'Upper back pain', 'Shoulder injury', 'Shoulder pain', 'Rotator cuff issues',
+    'Ankle injury', 'Ankle pain', 'Ankle instability', 'Wrist injury', 'Wrist pain',
+    'Carpal tunnel', 'Hip discomfort', 'Hip pain', 'Hip injury', 'Neck pain',
+    'Neck injury', 'Elbow pain', 'Tennis elbow', 'Golfer\'s elbow', 'Asthma',
+    'Breathing difficulties', 'Heart conditions', 'High blood pressure',
   ];
 
   const toggleLimitation = (limitation: string) => {
@@ -215,6 +194,8 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
     if (currentStep > 0) {
       animateTransition('back');
       setCurrentStep(currentStep - 1);
+    } else {
+      router.back();
     }
   };
 
@@ -252,12 +233,11 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
                 ]}
                 onPress={() => setFitnessLevel(level.value)}
               >
-                <Icon name={level.icon} size={40} color={level.color} />
+                <Icon name={level.icon} size={36} color={level.color} />
                 <Text style={styles.optionTitle}>{level.value}</Text>
-                <Text style={styles.optionDescription}>{level.description}</Text>
                 {fitnessLevel === level.value && (
                   <View style={[styles.checkBadge, { backgroundColor: level.color }]}>
-                    <Icon name="check" size={20} color="#fff" />
+                    <Icon name="check" size={18} color="#fff" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -277,12 +257,11 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
                 ]}
                 onPress={() => setGoal(g.value)}
               >
-                <Icon name={g.icon} size={40} color={goal === g.value ? '#667eea' : '#999'} />
+                <Icon name={g.icon} size={36} color={goal === g.value ? '#667eea' : '#999'} />
                 <Text style={styles.optionTitle}>{g.value}</Text>
-                <Text style={styles.optionDescription}>{g.description}</Text>
                 {goal === g.value && (
                   <View style={styles.checkBadge}>
-                    <Icon name="check" size={20} color="#fff" />
+                    <Icon name="check" size={18} color="#fff" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -302,12 +281,11 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
                 ]}
                 onPress={() => setTrainingDuration(duration.value)}
               >
-                <Icon name={duration.icon} size={40} color={trainingDuration === duration.value ? '#667eea' : '#999'} />
+                <Icon name={duration.icon} size={36} color={trainingDuration === duration.value ? '#667eea' : '#999'} />
                 <Text style={styles.optionTitle}>{duration.value}</Text>
-                <Text style={styles.optionDescription}>{duration.description}</Text>
                 {trainingDuration === duration.value && (
                   <View style={styles.checkBadge}>
-                    <Icon name="check" size={20} color="#fff" />
+                    <Icon name="check" size={18} color="#fff" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -319,7 +297,7 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
         return (
           <View style={styles.inputContainer}>
             <View style={styles.inputCard}>
-              <Icon name="height" size={32} color="#667eea" />
+              <Icon name="height" size={28} color="#667eea" />
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Height (cm)</Text>
                 <TextInput
@@ -334,7 +312,7 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
             </View>
 
             <View style={styles.inputCard}>
-              <Icon name="monitor-weight" size={32} color="#667eea" />
+              <Icon name="monitor-weight" size={28} color="#667eea" />
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Weight (kg)</Text>
                 <TextInput
@@ -349,9 +327,9 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
             </View>
 
             <View style={styles.infoBox}>
-              <Icon name="info-outline" size={20} color="#667eea" />
+              <Icon name="info-outline" size={18} color="#667eea" />
               <Text style={styles.infoText}>
-                Optional: Height and weight help us calculate your BMI for better recommendations
+                Optional: Helps calculate BMI for better recommendations
               </Text>
             </View>
           </View>
@@ -369,12 +347,11 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
                 ]}
                 onPress={() => setEquipment(eq.value)}
               >
-                <Icon name={eq.icon} size={40} color={equipment === eq.value ? '#667eea' : '#999'} />
+                <Icon name={eq.icon} size={36} color={equipment === eq.value ? '#667eea' : '#999'} />
                 <Text style={styles.optionTitle}>{eq.value}</Text>
-                <Text style={styles.optionDescription}>{eq.description}</Text>
                 {equipment === eq.value && (
                   <View style={styles.checkBadge}>
-                    <Icon name="check" size={20} color="#fff" />
+                    <Icon name="check" size={18} color="#fff" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -384,32 +361,30 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
 
       case 5:
         return (
-          <View style={styles.limitationsContainer}>
-            <View style={styles.limitationsGrid}>
-              {limitationOptions.map((limitation) => {
-                const isSelected = limitations.includes(limitation);
-                return (
-                  <TouchableOpacity
-                    key={limitation}
-                    style={[
-                      styles.limitationChip,
-                      isSelected && styles.limitationChipSelected,
-                    ]}
-                    onPress={() => toggleLimitation(limitation)}
-                  >
-                    <Text style={[
-                      styles.limitationText,
-                      isSelected && styles.limitationTextSelected,
-                    ]}>
-                      {limitation}
-                    </Text>
-                    {isSelected && (
-                      <Icon name="check-circle" size={18} color="#667eea" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          <View style={styles.limitationsGrid}>
+            {limitationOptions.map((limitation) => {
+              const isSelected = limitations.includes(limitation);
+              return (
+                <TouchableOpacity
+                  key={limitation}
+                  style={[
+                    styles.limitationChip,
+                    isSelected && styles.limitationChipSelected,
+                  ]}
+                  onPress={() => toggleLimitation(limitation)}
+                >
+                  <Text style={[
+                    styles.limitationText,
+                    isSelected && styles.limitationTextSelected,
+                  ]}>
+                    {limitation}
+                  </Text>
+                  {isSelected && (
+                    <Icon name="check-circle" size={16} color="#667eea" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         );
 
@@ -419,93 +394,75 @@ export default function CardioQuizScreen({ onComplete }: { onComplete: () => voi
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <SafeLinearGradient
-        colors={['#667eea', '#764ba2']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <Icon name={steps[currentStep].icon} size={32} color="#fff" />
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Fitness Quiz</Text>
-            <Text style={styles.headerSubtitle}>Personalize your experience</Text>
-          </View>
+    <SafeAreaView style={styles.container}>
+      {/* ✅ VERY COMPACT HEADER - Moved up */}
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Icon name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.topBarContent}>
+          <Text style={styles.topBarTitle}>Fitness Quiz</Text>
+          <Text style={styles.topBarSubtitle}>Step {currentStep + 1}/{steps.length}</Text>
         </View>
-      </SafeLinearGradient>
+        <View style={styles.placeholder} />
+      </View>
 
-      {/* Scrollable Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+      {/* ✅ VERY COMPACT PROGRESS BAR */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBar}>
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                width: progressAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+        </View>
+      </View>
+
+      {/* ✅ COMPACT QUESTION */}
+      <View style={styles.questionContainer}>
+        <Icon name={steps[currentStep].icon} size={20} color="#667eea" />
+        <Text style={styles.questionText}>{steps[currentStep].question}</Text>
+      </View>
+
+      {/* ✅ LARGE SCROLLABLE CONTENT AREA */}
+      <ScrollView 
+        style={styles.contentScroll}
+        contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <Animated.View
-              style={[
-                styles.progressFill,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.progressText}>
-            Step {currentStep + 1} of {steps.length}
-          </Text>
-        </View>
-
-        {/* Question */}
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionTitle}>{steps[currentStep].title}</Text>
-          <Text style={styles.questionText}>{steps[currentStep].question}</Text>
-        </View>
-
-        {/* Content */}
         <Animated.View
-          style={[
-            styles.contentContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateX: slideAnim }],
-            },
-          ]}
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateX: slideAnim }],
+          }}
         >
           {renderStepContent()}
         </Animated.View>
       </ScrollView>
 
-      {/* Navigation Buttons - Fixed at bottom */}
+      {/* ✅ COMPACT NAVIGATION */}
       <View style={styles.navigationContainer}>
-        {currentStep > 0 && (
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Icon name="arrow-back" size={24} color="#667eea" />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-        )}
         <TouchableOpacity
-          style={[styles.nextButton, currentStep === 0 && styles.nextButtonFull]}
+          style={styles.nextButton}
           onPress={handleNext}
         >
-          <SafeLinearGradient
+          <LinearGradient
             colors={['#667eea', '#764ba2']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.nextButtonGradient}
           >
             <Text style={styles.nextButtonText}>
-              {currentStep === steps.length - 1 ? 'Complete' : 'Next'}
+              {currentStep === steps.length - 1 ? 'Complete Quiz' : 'Next'}
             </Text>
-            <Icon name="arrow-forward" size={24} color="#fff" />
-          </SafeLinearGradient>
+            <Icon name={currentStep === steps.length - 1 ? 'check' : 'arrow-forward'} size={20} color="#fff" />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -517,76 +474,92 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  header: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
+  
+  // ✅ TOP BAR - Very compact
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  headerTextContainer: {
-    marginLeft: 16,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBarContent: {
     flex: 1,
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 28,
+  topBarTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#333',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 4,
+  topBarSubtitle: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
   },
+  placeholder: {
+    width: 40,
+  },
+  
+  // ✅ VERY COMPACT PROGRESS
   progressContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: '#fff',
   },
   progressBar: {
-    height: 8,
+    height: 4,
     backgroundColor: '#e0e0e0',
-    borderRadius: 4,
+    borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 12,
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#667eea',
-    borderRadius: 4,
+    borderRadius: 2,
   },
-  progressText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
+  
+  // ✅ COMPACT QUESTION
   questionContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  questionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   questionText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  scrollView: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 20,
+  
+  // ✅ LARGE SCROLLABLE CONTENT
+  contentScroll: {
+    flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    minHeight: 200,
+    padding: 16,
+    paddingBottom: 32,
   },
+  
+  // Options
   optionsContainer: {
-    gap: 16,
+    gap: 12,
   },
   optionCard: {
     backgroundColor: '#fff',
@@ -596,99 +569,85 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   optionCardSelected: {
     borderColor: '#667eea',
     borderWidth: 3,
   },
   optionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#333',
-    marginTop: 12,
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 4,
+    marginTop: 8,
   },
   checkBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#667eea',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
+  // Inputs
   inputContainer: {
-    gap: 16,
+    gap: 12,
   },
   inputCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 16,
   },
   inputGroup: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 12,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   input: {
     backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
     color: '#333',
   },
   infoBox: {
     flexDirection: 'row',
     backgroundColor: '#E3F2FD',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
   },
   infoText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#1976D2',
-    marginLeft: 12,
+    marginLeft: 8,
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 16,
   },
-  limitationsContainer: {
-    minHeight: 400,
-  },
+  
+  // Limitations
   limitationsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   limitationChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
@@ -697,61 +656,38 @@ const styles = StyleSheet.create({
     borderColor: '#667eea',
   },
   limitationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginRight: 6,
+    marginRight: 4,
   },
   limitationTextSelected: {
     color: '#667eea',
     fontWeight: '600',
   },
+  
+  // ✅ COMPACT NAVIGATION
   navigationContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 20,
-    gap: 12,
-    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#667eea',
-    flex: 1,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#667eea',
-    marginLeft: 8,
-  },
   nextButton: {
-    flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  nextButtonFull: {
-    flex: 1,
   },
   nextButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
   },
   nextButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#fff',
-    marginRight: 8,
+    marginRight: 6,
   },
 });

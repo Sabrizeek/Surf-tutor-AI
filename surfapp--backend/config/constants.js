@@ -24,6 +24,7 @@ module.exports = {
   
   // Database
   MONGODB_DB: process.env.MONGODB_DB || 'surf_ai',
+ 
   
   // User Validation
   ALLOWED_SKILL_LEVELS: ['Beginner', 'Intermediate', 'Advanced', 'Pro'],
