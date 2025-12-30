@@ -15,7 +15,8 @@ const getBaseURL = () => {
       // For Android Physical Device: use your computer's IP address on the local network
       // To find your IP: Windows (ipconfig) or Mac/Linux (ifconfig)
       const IS_EMULATOR = false; // Set to true if using Android emulator
-      const YOUR_COMPUTER_IP = '192.168.8.100'; // ⚠️ CHANGE THIS TO YOUR IP for physical devices
+      const YOUR_COMPUTER_IP = '192.168.8.101'; // ✅ CORRECT
+ // ⚠️ CHANGE THIS TO YOUR IP for physical devices
       
       if (IS_EMULATOR) {
         return 'http://10.0.2.2:3000'; // Android emulator special IP
@@ -73,20 +74,31 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Enhanced error logging
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a9af6247-da90-472c-8617-bf1275ff3bd4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:75',message:'API error interceptor entry',data:{errorCode:error?.code,errorMessage:error?.message,url:error?.config?.url,hasResponse:!!error?.response},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    // Reduced error logging - backend is optional for progress saving
     if (error.code === 'ECONNABORTED' || error.message === 'Network Error') {
-      console.error('[API] ❌ Network Error - Backend server may not be running');
-      console.error(`[API] Attempted URL: ${error.config?.baseURL}${error.config?.url}`);
-      console.error('[API] 💡 Troubleshooting:');
-      console.error('   1. Ensure backend server is running: cd surfapp--backend && npm start');
-      console.error('   2. Check if IP address is correct in api.ts (line 15)');
-      console.error('   3. For Android emulator, use 10.0.2.2 instead of localhost');
-      console.error('   4. For physical device, ensure device and computer are on same WiFi');
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a9af6247-da90-472c-8617-bf1275ff3bd4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:77',message:'Network error branch',data:{url:error?.config?.baseURL+error?.config?.url},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      // Single concise error message instead of 5 separate ones
+      const url = error.config?.url || 'unknown';
+      console.warn(`[API] Backend unavailable (${url}) - progress saving disabled. Start backend with: cd surfapp--backend && npm start`);
     } else if (error.response) {
-      console.error(`[API] ❌ Response error ${error.response.status}:`, error.response.data);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a9af6247-da90-472c-8617-bf1275ff3bd4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:85',message:'Response error branch',data:{status:error?.response?.status},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      console.error(`[API] Response error ${error.response.status}:`, error.response.data);
     } else {
-      console.error('[API] ❌ Request error:', error.message);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a9af6247-da90-472c-8617-bf1275ff3bd4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:87',message:'Other error branch',data:{errorMessage:error?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      console.error('[API] Request error:', error.message);
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a9af6247-da90-472c-8617-bf1275ff3bd4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:90',message:'API error interceptor exit',data:{rejecting:true},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     return Promise.reject(error);
   }
 );
@@ -96,56 +108,6 @@ api.interceptors.response.use(
 // ============================================================================
 
 export const poseAPI = {
-  /**
-   * Detect pose from base64 image
-   * @param {string} imageBase64 - Base64 encoded image data
-   * @param {string} [drillId] - Optional drill ID for context
-   * @param {string} [sessionId] - Optional session ID for velocity tracking
-   * @returns {Promise<any>} Pose detection result with landmarks
-   */
-  detectPose: async (imageBase64, drillId, sessionId) => {
-    try {
-      console.log('[poseAPI] 📸 Sending pose detection request...');
-      console.log('[poseAPI] Image size:', imageBase64.length, 'characters');
-      console.log('[poseAPI] Drill:', drillId, '| Session:', sessionId);
-      
-      const response = await api.post('/api/pose/detect', {
-        image: imageBase64,
-        drillId,
-        sessionId,
-      });
-      
-      console.log('[poseAPI] ✅ Detection success:', response.data.personDetected);
-      console.log('[poseAPI] Landmarks:', response.data.landmark_count);
-      console.log('[poseAPI] Quality:', response.data.detectionQuality?.toFixed(2));
-      
-      return response.data;
-    } catch (error) {
-      console.error('[poseAPI] ❌ Detection failed:', error.message);
-      
-      // Return a safe error response
-      return {
-        success: false,
-        personDetected: false,
-        landmarks: null,
-        confidence: 0,
-        stability_score: 0,
-        landmark_count: 0,
-        error: error.message || 'Pose detection failed',
-        boundingBox: null,
-        detectionQuality: 0,
-        bodyCompleteness: {
-          head: false,
-          torso: false,
-          legs: false,
-          feet: false
-        },
-        calibrationStatus: 'not_detected',
-        averageVisibility: 0,
-      };
-    }
-  },
-  
   /**
    * Health check for pose detection service
    * @returns {Promise<any>} Service health status

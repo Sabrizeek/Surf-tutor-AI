@@ -1190,7 +1190,7 @@ export default function PosePracticeScreen() {
     return '#FF3B30'; // Red
   };
 
-  const getFeedbackColor = (type: string) => {
+  const getFeedbackColor = (type) => {
     switch (type) {
       case 'success':
         return '#34C759';
