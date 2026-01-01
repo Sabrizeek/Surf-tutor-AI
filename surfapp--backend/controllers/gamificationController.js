@@ -3,7 +3,7 @@
  * Handles points, badges, streaks, and achievements
  */
 
-const User = require('../models/User');
+
 const { asyncHandler } = require('../middlewares/errorHandler');
 
 /**
