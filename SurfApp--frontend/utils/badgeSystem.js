@@ -216,7 +216,7 @@ export function checkCardioBadges(stats, earnedBadges) {
 export function checkPoseBadges(stats, earnedBadges) {
   const newBadges = [];
   const progress = {};
-  const earnedSet = new Set(earnedBadges);
+  const earnedSet = new Set(earnedBadges || []);
 
   // Novice badge
   if (stats.completedDrills.length >= 1 && !earnedSet.has('pose_novice')) {

@@ -3,7 +3,6 @@
  * Handles user progress tracking operations
  */
 
-const User = require('../models/User');
 const { asyncHandler } = require('../middlewares/errorHandler');
 
 /**

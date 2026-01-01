@@ -309,7 +309,13 @@ export default function CardioPlansScreen() {
         Alert.alert('Error', 'No recommendations received');
       }
     } catch (error) {
-      console.error('❌ Error getting recommendations:', error);
+      // Backend is optional - use warn for network errors
+      const isNetworkError = error.message?.includes('Cannot connect to backend') || error.code === 'ECONNABORTED' || error.message === 'Network Error';
+      if (isNetworkError) {
+        console.warn('[Cardio] Backend unavailable - recommendations disabled');
+      } else {
+        console.error('❌ Error getting recommendations:', error);
+      }
       const errorData = error.response?.data || {};
       const errorMsg = errorData.error || 'Failed to get recommendations';
       const errorDetails = errorData.details || '';
