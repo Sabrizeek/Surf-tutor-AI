@@ -1091,7 +1091,7 @@ export default function PosePracticeScreen() {
           // would need to be tracked separately in state/refs
         };
         
-        const newBadges = checkPoseBadges(badgeCheckProgress, sessionData);
+        const newBadges = checkPoseBadges(badgeCheckProgress, badgeCheckProgress.badges);
         
         // Award new badges and show notification
         if (newBadges.length > 0) {

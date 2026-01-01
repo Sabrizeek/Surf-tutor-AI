@@ -26,6 +26,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="surf-tutor-app"/>
+        <data android:scheme="exp+surf-tutor-app"/>
       </intent-filter>
     </activity>
   </application>

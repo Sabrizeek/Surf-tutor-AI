@@ -3,33 +3,47 @@
     "name": "SurfTutorApp",
     "slug": "surf-tutor-app",
     "version": "0.0.1",
+
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+
+    "scheme": "surf-tutor-app",
+
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "assetBundlePatterns": [
       "**/*"
     ],
+
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.surftutorapp"
+      "bundleIdentifier": "com.surftutorapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access for real-time pose detection and coaching."
+      }
     },
+
     "android": {
       "package": "com.anonymous.SurfApp",
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "INTERNET"
       ]
     },
+
     "plugins": [
       "expo-dev-client",
+
       [
         "expo-router",
         {
           "origin": "https://surf-tutor-app.com"
         }
       ],
+
       [
         "react-native-vision-camera",
         {
@@ -37,7 +51,6 @@
           "enableFrameProcessors": true
         }
       ]
-    ],
-    "scheme": "surf-tutor-app"
+    ]
   }
 }

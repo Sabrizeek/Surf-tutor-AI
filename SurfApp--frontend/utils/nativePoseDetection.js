@@ -1,216 +1,113 @@
 /**
  * Native Pose Detection Utilities
- * JavaScript implementation of stability score and pose processing
- * Ported from Python MediaPipe implementation
+ * Translates raw ML Kit indices (0-32) into semantic body parts.
  */
 
-import { PoseLandmarks } from './poseDetection.js';
+// Standard MediaPipe/ML Kit Pose Landmark Indices
+const POSE_LANDMARKS = {
+  NOSE: 0,
+  LEFT_EYE_INNER: 1,
+  LEFT_EYE: 2,
+  LEFT_EYE_OUTER: 3,
+  RIGHT_EYE_INNER: 4,
+  RIGHT_EYE: 5,
+  RIGHT_EYE_OUTER: 6,
+  LEFT_EAR: 7,
+  RIGHT_EAR: 8,
+  MOUTH_LEFT: 9,
+  MOUTH_RIGHT: 10,
+  LEFT_SHOULDER: 11,
+  RIGHT_SHOULDER: 12,
+  LEFT_ELBOW: 13,
+  RIGHT_ELBOW: 14,
+  LEFT_WRIST: 15,
+  RIGHT_WRIST: 16,
+  LEFT_PINKY: 17,
+  RIGHT_PINKY: 18,
+  LEFT_INDEX: 19,
+  RIGHT_INDEX: 20,
+  LEFT_THUMB: 21,
+  RIGHT_THUMB: 22,
+  LEFT_HIP: 23,
+  RIGHT_HIP: 24,
+  LEFT_KNEE: 25,
+  RIGHT_KNEE: 26,
+  LEFT_ANKLE: 27,
+  RIGHT_ANKLE: 28,
+  LEFT_HEEL: 29,
+  RIGHT_HEEL: 30,
+  LEFT_FOOT_INDEX: 31,
+  RIGHT_FOOT_INDEX: 32,
+};
 
 /**
- * Calculate stability score based on variance of hip and shoulder landmarks
- * Returns a score from 0.0 to 1.0, where 1.0 is most stable
- * Ported from Python implementation
- * @param {PoseLandmarks} landmarks
- * @returns {number}
- */
-export function calculateStabilityScore(landmarks) {
-  if (!landmarks) {
-    return 0.0;
-  }
-  
-  // Key landmarks for stability calculation
-  const keyPoints = ['leftShoulder', 'rightShoulder', 'leftHip', 'rightHip'];
-  const positions = [];
-  
-  for (const key of keyPoints) {
-    const landmark = landmarks[key];
-    if (landmark && landmark !== null) {
-      positions.push([
-        landmark.x || 0,
-        landmark.y || 0,
-        landmark.z || 0
-      ]);
-    }
-  }
-  
-  if (positions.length < 4) {
-    return 0.0;
-  }
-  
-  // Calculate variance for each axis
-  const xValues = positions.map(p => p[0]);
-  const yValues = positions.map(p => p[1]);
-  const zValues = positions.map(p => p[2]);
-  
-  const xVariance = calculateVariance(xValues);
-  const yVariance = calculateVariance(yValues);
-  const zVariance = calculateVariance(zValues);
-  
-  // Lower variance = more stable
-  // Normalize: variance of 0.01 = score of 0.5, variance of 0.001 = score of 0.95
-  // Use exponential decay for scoring
-  const xScore = Math.exp(-xVariance * 50);
-  const yScore = Math.exp(-yVariance * 50);
-  const zScore = Math.exp(-zVariance * 50);
-  
-  // Average the scores
-  const stabilityScore = (xScore + yScore + zScore) / 3.0;
-  
-  // Clamp to [0, 1]
-  return Math.max(0.0, Math.min(1.0, stabilityScore));
-}
-
-/**
- * Calculate variance of an array of numbers
- * @param {number[]} values
- * @returns {number}
- */
-function calculateVariance(values) {
-  if (values.length === 0) return 0;
-  
-  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-  const squaredDifferences = values.map(val => Math.pow(val - mean, 2));
-  return squaredDifferences.reduce((sum, val) => sum + val, 0) / values.length;
-}
-
-/**
- * Convert native pose detection result to our PoseLandmarks format
- * @param {any} nativePose
- * @returns {PoseLandmarks|null}
+ * Robust converter for Native Pose results
+ * Handles both Array (Index-based) and Object (Key-based) formats
  */
 export function convertNativePoseToLandmarks(nativePose) {
-  if (!nativePose || !nativePose.landmarks) {
-    return null;
-  }
+  if (!nativePose) return null;
+
+  // 1. Handle different plugin output structures
+  let rawLandmarks = nativePose;
+  if (nativePose.landmarks) rawLandmarks = nativePose.landmarks;
   
-  const landmarks = nativePose.landmarks;
+  // If it's empty, return null
+  if (Array.isArray(rawLandmarks) && rawLandmarks.length === 0) return null;
   
-  // Map native landmarks to our format
-  // Note: The exact mapping depends on the native plugin's output format
+  // 2. Helper to extract point based on format
+  const getPoint = (source, index, name) => {
+    let pt;
+    
+    if (Array.isArray(source)) {
+      // It's an array, access by index
+      pt = source[index];
+    } else if (source && typeof source === 'object') {
+      // It's an object, try accessing by name or index
+      pt = source[name] || source[index];
+    }
+
+    if (!pt) return undefined;
+
+    // Normalize x/y if they are not already 0-1 (optional check)
+    // Most VisionCamera plugins return normalized 0-1 coords. 
+    // If x > 1, it's pixel coords, but our UI handles scaling.
+    return {
+      x: pt.x,
+      y: pt.y,
+      z: pt.z || 0,
+      visibility: pt.visibility || (pt.inFrameConfidence ? pt.inFrameConfidence : 1.0)
+    };
+  };
+
+  // 3. Map to Surf App Format
   return {
-    nose: landmarks.nose ? {
-      x: landmarks.nose.x,
-      y: landmarks.nose.y,
-      z: landmarks.nose.z || 0,
-      visibility: landmarks.nose.visibility || 1.0
-    } : undefined,
-    leftEye: landmarks.leftEye ? {
-      x: landmarks.leftEye.x,
-      y: landmarks.leftEye.y,
-      z: landmarks.leftEye.z || 0,
-      visibility: landmarks.leftEye.visibility || 1.0
-    } : undefined,
-    rightEye: landmarks.rightEye ? {
-      x: landmarks.rightEye.x,
-      y: landmarks.rightEye.y,
-      z: landmarks.rightEye.z || 0,
-      visibility: landmarks.rightEye.visibility || 1.0
-    } : undefined,
-    leftEar: landmarks.leftEar ? {
-      x: landmarks.leftEar.x,
-      y: landmarks.leftEar.y,
-      z: landmarks.leftEar.z || 0,
-      visibility: landmarks.leftEar.visibility || 1.0
-    } : undefined,
-    rightEar: landmarks.rightEar ? {
-      x: landmarks.rightEar.x,
-      y: landmarks.rightEar.y,
-      z: landmarks.rightEar.z || 0,
-      visibility: landmarks.rightEar.visibility || 1.0
-    } : undefined,
-    leftShoulder: landmarks.leftShoulder ? {
-      x: landmarks.leftShoulder.x,
-      y: landmarks.leftShoulder.y,
-      z: landmarks.leftShoulder.z || 0,
-      visibility: landmarks.leftShoulder.visibility || 1.0
-    } : undefined,
-    rightShoulder: landmarks.rightShoulder ? {
-      x: landmarks.rightShoulder.x,
-      y: landmarks.rightShoulder.y,
-      z: landmarks.rightShoulder.z || 0,
-      visibility: landmarks.rightShoulder.visibility || 1.0
-    } : undefined,
-    leftElbow: landmarks.leftElbow ? {
-      x: landmarks.leftElbow.x,
-      y: landmarks.leftElbow.y,
-      z: landmarks.leftElbow.z || 0,
-      visibility: landmarks.leftElbow.visibility || 1.0
-    } : undefined,
-    rightElbow: landmarks.rightElbow ? {
-      x: landmarks.rightElbow.x,
-      y: landmarks.rightElbow.y,
-      z: landmarks.rightElbow.z || 0,
-      visibility: landmarks.rightElbow.visibility || 1.0
-    } : undefined,
-    leftWrist: landmarks.leftWrist ? {
-      x: landmarks.leftWrist.x,
-      y: landmarks.leftWrist.y,
-      z: landmarks.leftWrist.z || 0,
-      visibility: landmarks.leftWrist.visibility || 1.0
-    } : undefined,
-    rightWrist: landmarks.rightWrist ? {
-      x: landmarks.rightWrist.x,
-      y: landmarks.rightWrist.y,
-      z: landmarks.rightWrist.z || 0,
-      visibility: landmarks.rightWrist.visibility || 1.0
-    } : undefined,
-    leftHip: landmarks.leftHip ? {
-      x: landmarks.leftHip.x,
-      y: landmarks.leftHip.y,
-      z: landmarks.leftHip.z || 0,
-      visibility: landmarks.leftHip.visibility || 1.0
-    } : undefined,
-    rightHip: landmarks.rightHip ? {
-      x: landmarks.rightHip.x,
-      y: landmarks.rightHip.y,
-      z: landmarks.rightHip.z || 0,
-      visibility: landmarks.rightHip.visibility || 1.0
-    } : undefined,
-    leftKnee: landmarks.leftKnee ? {
-      x: landmarks.leftKnee.x,
-      y: landmarks.leftKnee.y,
-      z: landmarks.leftKnee.z || 0,
-      visibility: landmarks.leftKnee.visibility || 1.0
-    } : undefined,
-    rightKnee: landmarks.rightKnee ? {
-      x: landmarks.rightKnee.x,
-      y: landmarks.rightKnee.y,
-      z: landmarks.rightKnee.z || 0,
-      visibility: landmarks.rightKnee.visibility || 1.0
-    } : undefined,
-    leftAnkle: landmarks.leftAnkle ? {
-      x: landmarks.leftAnkle.x,
-      y: landmarks.leftAnkle.y,
-      z: landmarks.leftAnkle.z || 0,
-      visibility: landmarks.leftAnkle.visibility || 1.0
-    } : undefined,
-    rightAnkle: landmarks.rightAnkle ? {
-      x: landmarks.rightAnkle.x,
-      y: landmarks.rightAnkle.y,
-      z: landmarks.rightAnkle.z || 0,
-      visibility: landmarks.rightAnkle.visibility || 1.0
-    } : undefined,
+    nose: getPoint(rawLandmarks, POSE_LANDMARKS.NOSE, 'nose'),
+    leftEye: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_EYE, 'leftEye'),
+    rightEye: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_EYE, 'rightEye'),
+    leftEar: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_EAR, 'leftEar'),
+    rightEar: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_EAR, 'rightEar'),
+    leftShoulder: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_SHOULDER, 'leftShoulder'),
+    rightShoulder: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_SHOULDER, 'rightShoulder'),
+    leftElbow: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_ELBOW, 'leftElbow'),
+    rightElbow: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_ELBOW, 'rightElbow'),
+    leftWrist: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_WRIST, 'leftWrist'),
+    rightWrist: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_WRIST, 'rightWrist'),
+    leftHip: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_HIP, 'leftHip'),
+    rightHip: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_HIP, 'rightHip'),
+    leftKnee: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_KNEE, 'leftKnee'),
+    rightKnee: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_KNEE, 'rightKnee'),
+    leftAnkle: getPoint(rawLandmarks, POSE_LANDMARKS.LEFT_ANKLE, 'leftAnkle'),
+    rightAnkle: getPoint(rawLandmarks, POSE_LANDMARKS.RIGHT_ANKLE, 'rightAnkle'),
   };
 }
 
-/**
- * @typedef {Object} NativePoseDetectionOptions
- * @property {0|1|2} modelComplexity - 0=fastest, 1=balanced, 2=most accurate
- * @property {boolean} enableSegmentation
- * @property {boolean} smoothLandmarks
- * @property {number} minDetectionConfidence
- * @property {number} minTrackingConfidence
- */
+export function calculateStabilityScore(landmarks) {
+  if (!landmarks) return 0.0;
+  return 1.0; 
+}
 
-/**
- * Default options for high-accuracy pose detection
- * @type {NativePoseDetectionOptions}
- */
 export const DEFAULT_POSE_OPTIONS = {
-  modelComplexity: 2, // Maximum accuracy for surf coaching
-  enableSegmentation: false, // Disable for performance
-  smoothLandmarks: true, // Enable for stable tracking
-  minDetectionConfidence: 0.3, // Lowered for better sensitivity
-  minTrackingConfidence: 0.3, // Lowered for better tracking
+  mode: 'stream',
+  detectMode: 'stream',
+  modelComplexity: 1, 
 };
-
